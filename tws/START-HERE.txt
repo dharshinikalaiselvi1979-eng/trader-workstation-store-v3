@@ -1,0 +1,19 @@
+Trader WorkStation store - run it in 3 steps
+1. Copy .env.example to .env and put your Stripe key after STRIPE_SECRET_KEY=   (skip if you already have a .env)
+2. npm install
+3. npm start
+
+Store:  http://localhost:3000   (or the PORT in your .env)
+Admin:  /admin.html   (separate page; sign in with the token shown in the terminal)
+
+In Admin you can: see orders and revenue, approve or reject refunds, resend receipts, export orders to CSV,
+read messages and live-session sign-ups, create discount codes, write blog articles,
+publish STRATEGIES (video + English captions + AI audio + PDF), and see every email the store sends.
+
+Strategies: Admin > Strategies > New strategy. Upload the video (MP4/WebM), English captions (VTT or SRT),
+audio (or press "Generate AI audio" if OPENAI_API_KEY is in .env), and the PDF. Visitors see them under /strategies.
+
+Real PDF products: put them in the downloads folder as <product-id>.pdf or <product-id>.zip
+(product ids are in products.json). Until then buyers get a small placeholder text file.
+Emails: add RESEND_API_KEY (and MAIL_FROM) to .env to send them for real.
+Photos: replace files in public/images (guide-1.jpg to guide-4.jpg, hero-bg.jpg) with pictures of the same name.

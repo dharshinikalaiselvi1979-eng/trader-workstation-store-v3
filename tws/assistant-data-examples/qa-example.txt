@@ -1,0 +1,5 @@
+Q: Do you offer student discounts?
+A: Write your question or fact here. Start each question with Q: and each answer with A:. An answer can continue on the next lines.
+
+Q: Another question people ask?
+A: Its answer.

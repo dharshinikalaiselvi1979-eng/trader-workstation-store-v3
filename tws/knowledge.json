@@ -1,0 +1,381 @@
+{
+ "faq": [
+  {
+   "title": "Do I need an account to buy or download?",
+   "text": "No account is needed to buy. After you pay, your order page shows your keys and downloads. You can also sign in with Google (optional) to see all your orders in one place. Keep your order link, or use Find my orders (/find-orders.html).",
+   "url": "/find-orders.html"
+  },
+  {
+   "title": "Can I download my guide again later?",
+   "text": "Yes. Open your order page link any time and press Download again, as long as the order has not been refunded. If you lost the link, use Find my orders.",
+   "url": "/find-orders.html"
+  },
+  {
+   "title": "Which payment methods do you accept?",
+   "text": "Payment is handled by Stripe Checkout. The Stripe page shows the payment options available for your card and country. We never see your card details.",
+   "url": "/faq.html"
+  },
+  {
+   "title": "What currency are prices in, and what about taxes?",
+   "text": "Prices are in US dollars. The Stripe checkout page shows the exact total you will be charged before you pay.",
+   "url": "/faq.html"
+  },
+  {
+   "title": "Can I buy more than one copy?",
+   "text": "Yes. In the cart you can choose 1 to 10 copies of each guide. You get one licence key per copy.",
+   "url": "/products"
+  },
+  {
+   "title": "My order page says Confirming your payment",
+   "text": "This is normal for a few seconds. The page checks again every 2 seconds for about 2 minutes. If it still says pending, reload the page. If it does not change after a few minutes, contact us (/contact.html) with the email you paid with and the time of payment.",
+   "url": "/contact.html"
+  },
+  {
+   "title": "I did not get my receipt email",
+   "text": "Check your spam or junk folder first. Your order page always shows your keys and downloads even without the email. You can also use Find my orders (/find-orders.html). If you still need help, contact us.",
+   "url": "/find-orders.html"
+  },
+  {
+   "title": "My download will not open",
+   "text": "Guides are PDF files. Open them with any PDF reader, your web browser, or your phone. A guide marked PDF + XLSX also has an Excel worksheet that opens in Excel, Google Sheets or LibreOffice. If the file you get is a small text file saying it has not been uploaded yet, contact us with your order link and we will fix it.",
+   "url": "/contact.html"
+  },
+  {
+   "title": "How do I use the Excel worksheet?",
+   "text": "Guides marked PDF + XLSX include an Excel worksheet. Open it in Excel, Google Sheets or LibreOffice and type in your own numbers, for example your account size, to try the examples from the guide. It is for learning and does not give advice.",
+   "url": "/products"
+  },
+  {
+   "title": "How long does a refund take?",
+   "text": "After we approve your request, the full amount is refunded through Stripe to the original payment method. It can take a few days to appear on your statement, depending on your bank.",
+   "url": "/refund-policy.html"
+  },
+  {
+   "title": "Do I need a reason to ask for a refund?",
+   "text": "No. You can ask for a full refund for any reason within {{refundDays}} days of payment. The reason box on the order page is optional.",
+   "url": "/refund-policy.html"
+  },
+  {
+   "title": "What happens to my access after a refund?",
+   "text": "Once a refund is approved, the licence key and the download for that order stop working.",
+   "url": "/refund-policy.html"
+  },
+  {
+   "title": "Can I still get a refund after the refund window?",
+   "text": "The refund window is {{refundDays}} days from payment. After that, the order page says the window has ended. For unusual situations you can contact us, but the site does not promise refunds after the window.",
+   "url": "/contact.html"
+  },
+  {
+   "title": "Can I share my guide with a friend or my team?",
+   "text": "Each licence key covers one copy for your own personal use. Please do not share, resell or republish the files. A friend or team member can buy their own copy.",
+   "url": "/terms.html"
+  },
+  {
+   "title": "Do the guides come with updates?",
+   "text": "Nothing on the site promises future updates to a guide. The guide page lists what is included. New educational material appears in the Strategies library (/strategies) and the blog (/blog).",
+   "url": "/strategies"
+  },
+  {
+   "title": "Do you give trade signals, alerts or manage accounts?",
+   "text": "No. We do not give signals or alerts, we do not trade for you and we do not manage money. Everything is educational. Trading involves substantial risk of loss.",
+   "url": "/risk-disclosure.html"
+  },
+  {
+   "title": "Do you offer one-to-one coaching or mentoring?",
+   "text": "Coaching is not listed on the site. For any special request, use the contact form (/contact.html).",
+   "url": "/contact.html"
+  },
+  {
+   "title": "Do you ship anything physical?",
+   "text": "No. Everything is digital: PDF files, an Excel worksheet in one guide, and online videos and articles. You download it right after payment.",
+   "url": "/products"
+  },
+  {
+   "title": "Does the website work on my phone?",
+   "text": "Yes. The website, the cart and checkout work on phones and tablets, and PDFs open with your phone's PDF viewer.",
+   "url": "/"
+  },
+  {
+   "title": "What language are the guides in?",
+   "text": "The guides, articles and video captions are in English.",
+   "url": "/products"
+  },
+  {
+   "title": "Will these guides make me money?",
+   "text": "No guide can promise results. The guides are educational and trading involves substantial risk of loss. Please read the risk disclosure (/risk-disclosure.html).",
+   "url": "/risk-disclosure.html"
+  },
+  {
+   "title": "What is the licence key for?",
+   "text": "Each copy you buy gets its own licence key, shown on your order page and in your receipt email. Keep it with your receipt as proof of your copy. If you contact support about an order, include your order page link.",
+   "url": "/faq.html"
+  },
+  {
+   "title": "My discount code does not work",
+   "text": "Check the spelling and press Apply in the cart before you pay. A code can have an expiry date or a limited number of uses, and the cart tells you why it was rejected. Codes cannot be added after payment.",
+   "url": "/faq.html"
+  },
+  {
+   "title": "Is the live session free? Will it be recorded?",
+   "text": "The site does not say the live session is free or that it will be recorded. After you register you get the date, time and link by email, and the details will be in that email.",
+   "url": "/#live"
+  },
+  {
+   "title": "How do I join the live session?",
+   "text": "Register with the Reserve my spot form on the home page (/#live). Before the session starts we email you the join link. The time on the website is shown in your own local time zone.",
+   "url": "/#live"
+  },
+  {
+   "title": "What happens if a live session is cancelled or full?",
+   "text": "If a session is cancelled we aim to email the people who registered. A session can also be fully booked, in which case the form tells you. You can leave your details to hear about the next one.",
+   "url": "/#live"
+  },
+  {
+   "title": "How do I watch a strategy video with captions?",
+   "text": "Open the strategy from the Strategies page (/strategies). If it has captions, English captions are on by default in the video player and you can switch them off with the captions button. Some strategies also have audio narration, a PDF to open or download, and the full text below the video.",
+   "url": "/strategies"
+  },
+  {
+   "title": "Are the Strategies library and blog free to read?",
+   "text": "Yes. The Strategies pages and blog articles are open to read on the website. The PDF guides in the shop are the paid products.",
+   "url": "/strategies"
+  },
+  {
+   "title": "What does AI voice mean on a strategy page?",
+   "text": "Some audio narration is made with an AI voice. When that is the case the page says so. If a strategy has no audio file, the Listen button reads the text with your browser's built-in voice.",
+   "url": "/strategies"
+  },
+  {
+   "title": "What data do you keep about me?",
+   "text": "We keep your email, order details and any message you send so we can deliver your purchase, send receipts, handle refunds and reply. Stripe handles your card details. The chat assistant keeps the questions typed, without your name or email. See the Privacy Policy (/privacy.html). To ask us to delete your data, use the contact form.",
+   "url": "/privacy.html"
+  },
+  {
+   "title": "How can I contact you, and what are your hours?",
+   "text": "Use the contact form (/contact.html) and include your order page link if it is about an order. The site does not list support hours, so please allow some time for a reply.",
+   "url": "/contact.html"
+  },
+  {
+   "title": "Where is the company based?",
+   "text": "A business address is not listed on the site yet. The legal pages are drafts. For questions, use the contact form (/contact.html).",
+   "url": "/contact.html"
+  },
+  {
+   "title": "Can I change the email on my order?",
+   "text": "Please contact us (/contact.html) with your order page link and the email you want to use. Your order page and keys stay available from the link meanwhile.",
+   "url": "/contact.html"
+  },
+  {
+   "title": "What is the difference between the shop guides and the strategies?",
+   "text": "The shop (/products) sells PDF guides. The Strategies library (/strategies) has video lessons with English captions, PDFs and audio, and the blog (/blog) has short educational articles. Strategies and articles are open to read.",
+   "url": "/strategies"
+  },
+  {
+   "title": "How do I sign in with Google?",
+   "text": "Press Sign in at the top right of any page and choose your Google account. We only receive your name, email address and profile picture, never your Google password. A welcome email is sent the first time you sign in.",
+   "url": "/my-account.html"
+  },
+  {
+   "title": "What does signing in give me?",
+   "text": "Your orders are listed in one place under My orders, the assistant recognises what you bought and can answer questions about it, and checkout is filled in with your Google email. Signing in is optional.",
+   "url": "/my-account.html"
+  },
+  {
+   "title": "I did not get my welcome email",
+   "text": "Check your spam or junk folder. The welcome email goes to the Google address you signed in with. If it is not there after a few minutes, contact us and we can send it again.",
+   "url": "/contact.html"
+  },
+  {
+   "title": "How do I sign out or delete my account?",
+   "text": "Open the account menu at the top right and choose Sign out. To delete your account, open My orders and press Delete my account. Your orders and downloads stay available from their order links.",
+   "url": "/my-account.html"
+  },
+  {
+   "title": "Google sign-in does not work",
+   "text": "Make sure pop-ups and third-party sign-in prompts are not blocked in your browser, and try again. If it still fails, try another browser or contact us. You can still browse and buy without signing in.",
+   "url": "/contact.html"
+  }
+ ],
+ "terms": [
+  {
+   "term": "Order flow",
+   "text": "Order flow is the study of the actual trades and orders that make up price moves, such as how much traded and at which prices, instead of only looking at the candle shapes. It adds context to a chart; it does not predict what comes next.",
+   "guide": "order-flow-mastery",
+   "category": "Strategy"
+  },
+  {
+   "term": "Volume profile",
+   "text": "A volume profile shows how much trading happened at each price level over a period, instead of in each time slice. Traders use it to see where the market spent time and where it moved quickly.",
+   "guide": "order-flow-mastery",
+   "category": "Strategy"
+  },
+  {
+   "term": "Delta",
+   "text": "Delta compares the volume traded at the ask (buyers lifting offers) with the volume at the bid (sellers hitting bids). It hints at which side was more aggressive in that period.",
+   "guide": "order-flow-mastery",
+   "category": "Strategy"
+  },
+  {
+   "term": "Absorption",
+   "text": "Absorption describes large resting orders soaking up aggressive trading at a price so that price does not move much. It is one pattern order flow traders look for, and it can be misread.",
+   "guide": "order-flow-mastery",
+   "category": "Strategy"
+  },
+  {
+   "term": "Support and resistance",
+   "text": "Support and resistance are price areas where the market has paused or reversed before. Traders use them as reference points. They are not guarantees and levels can fail.",
+   "guide": "technical-analysis-blueprint",
+   "category": "Technical"
+  },
+  {
+   "term": "Trend",
+   "text": "A trend is the general direction of prices over a period: up, down or sideways. Trend tools help describe the direction; they do not tell you how long it will last.",
+   "guide": "technical-analysis-blueprint",
+   "category": "Technical"
+  },
+  {
+   "term": "Momentum",
+   "text": "Momentum describes how fast and how strongly price is moving. Momentum indicators measure that speed so traders can compare moves; they describe the past, not the future.",
+   "guide": "technical-analysis-blueprint",
+   "category": "Technical"
+  },
+  {
+   "term": "Moving average",
+   "text": "A moving average is the average of recent prices drawn as a line. It smooths out noise so the direction is easier to see, but it reacts after price has moved.",
+   "guide": "technical-analysis-blueprint",
+   "category": "Technical"
+  },
+  {
+   "term": "Candlestick",
+   "text": "A candlestick shows four prices for one period: open, high, low and close. A row of candlesticks makes up the chart most traders read.",
+   "guide": "technical-analysis-blueprint",
+   "category": "Technical"
+  },
+  {
+   "term": "Position sizing",
+   "text": "Position sizing means deciding how many units to trade so that if your stop is hit, the loss equals a small amount you chose in advance. The stop distance sets the size.",
+   "guide": "risk-management-playbook",
+   "category": "Risk"
+  },
+  {
+   "term": "Risk per trade",
+   "text": "Risk per trade is the amount you accept to lose if a trade is wrong, often written as a small percentage of the account. Choosing it before you enter is a core risk habit. See also the 2% rule article on the blog.",
+   "guide": "risk-management-playbook",
+   "category": "Risk"
+  },
+  {
+   "term": "Stop-loss",
+   "text": "A stop-loss is a planned exit level that limits the loss on a trade. It can be filled at a worse price than planned when markets gap or move fast.",
+   "guide": "risk-management-playbook",
+   "category": "Risk"
+  },
+  {
+   "term": "Slippage",
+   "text": "Slippage is the difference between the price you expected and the price you actually got. It is more likely in fast or thin markets.",
+   "guide": "risk-management-playbook",
+   "category": "Risk"
+  },
+  {
+   "term": "Drawdown",
+   "text": "A drawdown is the fall from a peak in account value to a later low. Drawdown limits are rules that tell a trader to pause or reduce size after a set loss.",
+   "guide": "risk-management-playbook",
+   "category": "Risk"
+  },
+  {
+   "term": "Risk-reward ratio",
+   "text": "The risk-reward ratio compares the amount you could gain on a trade with the amount you risk. It does not say how likely the trade is to work.",
+   "guide": "risk-management-playbook",
+   "category": "Risk"
+  },
+  {
+   "term": "Leverage",
+   "text": "Leverage means controlling a larger position than your own money would normally allow. It magnifies losses as well as gains and can lose more than you expect.",
+   "guide": "risk-management-playbook",
+   "category": "Risk"
+  },
+  {
+   "term": "Trading journal",
+   "text": "A trading journal is a record of each trade: why you entered, your plan, the result and what you learned. Reviewing it regularly is one of the simplest ways to improve. See the journal article on the blog.",
+   "guide": "trader-psychology-discipline",
+   "category": "Psychology"
+  },
+  {
+   "term": "Trading discipline",
+   "text": "Trading discipline means following your own written plan, including your risk rules, even when emotions pull you away from it. It is about process, not about winning every trade.",
+   "guide": "trader-psychology-discipline",
+   "category": "Psychology"
+  },
+  {
+   "term": "Scalping",
+   "text": "Scalping is very short-term trading, holding positions for seconds to minutes. Costs such as spreads and fees matter a lot, and frequent trading carries its own risks.",
+   "guide": "scalping-day-trading",
+   "category": "Strategy"
+  },
+  {
+   "term": "Day trading",
+   "text": "Day trading means opening and closing positions within the same day, so nothing is held overnight. It needs time, rules and cost control, and it carries substantial risk of loss.",
+   "guide": "scalping-day-trading",
+   "category": "Strategy"
+  },
+  {
+   "term": "Swing trading",
+   "text": "Swing trading means holding positions for days to weeks to capture a larger move. It involves planning entries and exits, and dealing with overnight gaps and news.",
+   "guide": "swing-trading-masterclass",
+   "category": "Strategy"
+  },
+  {
+   "term": "Spread",
+   "text": "The spread is the gap between the buy price and the sell price of a market. It is a trading cost you pay each time you trade.",
+   "guide": "forex-fundamentals-macro",
+   "category": "Forex"
+  },
+  {
+   "term": "Pip",
+   "text": "A pip is the standard small price step in forex. For most currency pairs it is 0.0001, and for pairs with the Japanese yen it is 0.01.",
+   "guide": "forex-fundamentals-macro",
+   "category": "Forex"
+  },
+  {
+   "term": "Forex sessions",
+   "text": "Forex trades around the clock, but activity changes with the main financial centres opening and closing, such as Sydney, Tokyo, London and New York. Liquidity and costs can differ by session.",
+   "guide": "forex-fundamentals-macro",
+   "category": "Forex"
+  },
+  {
+   "term": "Interest rates and central banks",
+   "text": "Central banks set interest rates, and changes in rates or expectations can move currencies. Forex traders follow rate decisions and the statements around them.",
+   "guide": "forex-fundamentals-macro",
+   "category": "Forex"
+  },
+  {
+   "term": "Economic calendar",
+   "text": "An economic calendar lists scheduled data releases and events, such as jobs and inflation reports, that can move markets. Traders check it to know when volatility may rise.",
+   "guide": "forex-fundamentals-macro",
+   "category": "Forex"
+  },
+  {
+   "term": "Liquidity",
+   "text": "Liquidity is how easily you can buy or sell without moving the price much. Thin liquidity usually means wider spreads and more slippage.",
+   "guide": "crypto-market-structure",
+   "category": "Crypto"
+  },
+  {
+   "term": "Order book",
+   "text": "An order book is the list of buy and sell orders waiting at different prices on an exchange. It shows where participants are willing to trade.",
+   "guide": "crypto-market-structure",
+   "category": "Crypto"
+  },
+  {
+   "term": "Funding rate",
+   "text": "On crypto perpetual futures, the funding rate is a periodic payment between long and short traders that keeps the contract price close to the spot price. It is a cost or income to factor in.",
+   "guide": "crypto-market-structure",
+   "category": "Crypto"
+  },
+  {
+   "term": "Exchange and custody",
+   "text": "An exchange is where you trade; custody is where your coins are held. Keeping assets on an exchange adds operational risks, which the crypto guide discusses.",
+   "guide": "crypto-market-structure",
+   "category": "Crypto"
+  }
+ ]
+}

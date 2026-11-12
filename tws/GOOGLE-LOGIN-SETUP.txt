@@ -1,0 +1,62 @@
+GOOGLE SIGN-IN + WELCOME EMAIL  (set up once)
+=============================================
+
+WHAT IT DOES
+- A "Sign in" button appears at the top right of every page, and a Welcome popup asks new visitors to sign in with Google.
+- The first time someone signs in, the site sends "Welcome to TraderWorkStation" to their Google email address.
+- Signed-in people see all their orders under "My orders", the assistant knows what they bought, and checkout uses their Google email.
+- Signing in is optional. Without GOOGLE_CLIENT_ID in .env the sign-in buttons simply do not appear.
+
+PART 1 - GOOGLE (about 10 minutes)
+1. Open https://console.cloud.google.com and create a project (any name, for example TraderWorkStation).
+2. Menu > APIs & Services > OAuth consent screen (may be called "Google Auth Platform"):
+   - User type: External. App name: TraderWorkStation. Support email: your email. Developer contact: your email.
+   - Scopes: keep only the defaults (email, profile, openid). Nothing extra is needed.
+   - When you are ready for the public, press "Publish app" so any Google account can sign in.
+     (While it is in "Testing", only the test users you list can sign in.)
+3. Menu > APIs & Services > Credentials > Create credentials > OAuth client ID:
+   - Application type: Web application. Name: TraderWorkStation website.
+   - Authorized JavaScript origins (add each address you use, exactly, with the port):
+         http://localhost:3000          (use your real port, for example 5000)
+         https://YOUR-DOMAIN            (when the site is live)
+     Note: localhost and 127.0.0.1 are different origins. Use the one you type in the browser.
+   - You do NOT need any "Authorized redirect URI".
+4. Copy the Client ID (it ends with .apps.googleusercontent.com). It is not secret.
+5. In the project's .env file add:
+         GOOGLE_CLIENT_ID=1234567890-abcdef.apps.googleusercontent.com
+   Then restart the server. The terminal should say "Google sign-in: on".
+
+PART 2 - SENDING THE WELCOME EMAIL (choose one)
+A) Gmail (simple, free, about 500 emails per day)
+   1. In your Google account turn on 2-Step Verification.
+   2. Google Account > Security > App passwords > create one named "TraderWorkStation". Copy the 16 letters.
+   3. In .env add:
+         SMTP_HOST=smtp.gmail.com
+         SMTP_PORT=465
+         SMTP_SECURE=1
+         SMTP_USER=yourname@gmail.com
+         SMTP_PASS=the16letterapppassword
+      Optional: MAIL_FROM=TraderWorkStation <yourname@gmail.com>
+   Gmail only lets you send "from" your own address, so the email will show that address as the sender.
+   For a business address like hello@yourdomain.com use option B or a business email service.
+B) Resend (good for a business domain)
+   Verify your domain in Resend, then add RESEND_API_KEY=... and MAIL_FROM=TraderWorkStation <hello@yourdomain.com>.
+   Resend only sends to other people after the domain is verified.
+Run   npm install   once (it installs the email sender), then restart.
+
+PART 3 - TEST
+1. Open the site in a private/incognito window. After about 3 seconds the Welcome popup appears. Or press "Sign in".
+2. Sign in with a Google account. You should see "Welcome ... We sent a welcome email".
+3. Check that inbox (and spam). Also check Admin > Users (welcome "Sent") and Admin > Emails (result and any error).
+4. Buy something with that same Google email and see it under My orders.
+
+COMMON PROBLEMS
+- Popup says "origin_mismatch" / button missing: the address in the browser is not in "Authorized JavaScript origins". Add it exactly.
+- "Access blocked / app not verified": the consent screen is still in Testing. Add yourself as a test user, or publish the app.
+- Sign-in works but no email arrives: open Admin > Emails and read the error. For Gmail the usual causes are a wrong app password
+  or 2-Step Verification not turned on.
+- Browser blocks the prompt: allow third-party sign-in / pop-ups for the site.
+
+PRIVACY
+The site receives only the visitor's name, email address and profile picture from Google, never a password.
+The Privacy Policy page already says so. A visitor can delete their own account on the My orders page.

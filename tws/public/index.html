@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en" data-theme="night">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TraderWorkStation — Practical Trading Guides</title>
+<meta name="description" content="Download practical trading guides and join live sessions. Instant download, secure checkout and a money-back guarantee.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="icon" href="/images/logo.svg"><link rel="stylesheet" href="/rocket.css"><script src="/rocket.js"></script>
+</head>
+<body id="top">
+
+<main id="main">
+  <!-- HERO: Full-bleed background with text overlay + floating widgets -->
+  <section class="hero">
+    <div class="hero-inner">
+      <!-- Left: copy & CTA -->
+      <div class="hero-content">
+        <div class="hero-pill">
+          <span class="hero-pill-dot"></span>
+          <span>Professional Trading Resources</span>
+        </div>
+
+        <h1 class="hero-title">
+          Trade Smarter.<br>
+          <span class="blue-accent">Learn from the</span><br>
+          Market's Best.
+        </h1>
+
+        <p class="hero-desc">
+          Download clear, practical trading guides and join live sessions. Every purchase backed by our <span class="refund-days">14</span>-day guarantee.
+        </p>
+
+        <div class="hero-cta">
+          <a class="btn-primary" href="#products">
+            <span>Browse Guides</span>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M7 17L17 7M17 7H7M17 7V17"/>
+            </svg>
+          </a>
+          <a class="btn-glass" href="#live">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span>Join Live Session</span>
+          </a>
+        </div>
+
+        <!-- Stats -->
+        <div class="hero-stats">
+          <div class="stat-item"><h4 class="count">8</h4><p>Guides</p></div>
+          <div class="stat-item"><h4><span class="refund-days">14</span> days</h4><p>Refund window</p></div>
+          <div class="stat-item"><h4>Instant</h4><p>Download</p></div>
+        </div>
+      </div>
+
+      <!-- Right: Floating overlay widgets -->
+      <div class="hero-widgets">
+        <!-- BTC Live Market Terminal Card -->
+        <div class="glass-card">
+          <div class="chart-widget-header">
+            <div>
+              <div class="symbol-tag">
+                <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#10b981;box-shadow:0 0 8px #10b981;margin-right:7px"></span>
+                <span>BTC / USD · 4H Trend</span>
+              </div>
+              <div class="symbol-price" id="heroBtcPrice">$68,420.50</div>
+            </div>
+            <div class="gain-pill" id="liveGainPill">
+              <span>▲</span><span id="liveGainPct">+3.84%</span>
+            </div>
+          </div>
+          <div class="chart-meta-row">
+            <span>24h Vol: <strong>$1.42B</strong></span>
+            <span>24h High: <strong>$69,180</strong></span>
+            <span>24h Low: <strong>$66,920</strong></span>
+          </div>
+
+          <!-- Animated Stock Market Line -->
+          <div class="chart-svg-box">
+            <svg class="stock-chart-svg" viewBox="0 0 400 130" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="chartLineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#38bdf8"/>
+                  <stop offset="50%" stop-color="#3b82f6"/>
+                  <stop offset="85%" stop-color="#8b5cf6"/>
+                  <stop offset="100%" stop-color="#10b981"/>
+                </linearGradient>
+                <linearGradient id="chartAreaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.35"/>
+                  <stop offset="60%" stop-color="#38bdf8" stop-opacity="0.09"/>
+                  <stop offset="100%" stop-color="#060913" stop-opacity="0"/>
+                </linearGradient>
+                <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="2.5" result="blur"/>
+                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+                <clipPath id="chartGrowClip">
+                  <rect id="growClipRect" x="0" y="0" width="0" height="130"/>
+                </clipPath>
+              </defs>
+
+              <!-- Grid lines -->
+              <g opacity="0.14">
+                <line x1="0" y1="33" x2="400" y2="33" stroke="#38bdf8" stroke-dasharray="3 4" stroke-width="0.8"/>
+                <line x1="0" y1="67" x2="400" y2="67" stroke="#38bdf8" stroke-dasharray="3 4" stroke-width="0.8"/>
+                <line x1="0" y1="100" x2="400" y2="100" stroke="#38bdf8" stroke-dasharray="3 4" stroke-width="0.8"/>
+              </g>
+
+              <!-- Volume bars -->
+              <g clip-path="url(#chartGrowClip)" opacity="0.20">
+                <rect x="35" y="105" width="5" height="25" rx="1" fill="#3b82f6"/>
+                <rect x="75" y="110" width="5" height="20" rx="1" fill="#3b82f6"/>
+                <rect x="120" y="94" width="5" height="36" rx="1" fill="#8b5cf6"/>
+                <rect x="165" y="102" width="5" height="28" rx="1" fill="#3b82f6"/>
+                <rect x="210" y="84" width="5" height="46" rx="1" fill="#8b5cf6"/>
+                <rect x="260" y="97" width="5" height="33" rx="1" fill="#3b82f6"/>
+                <rect x="310" y="74" width="5" height="56" rx="1" fill="#10b981"/>
+                <rect x="365" y="64" width="5" height="66" rx="1" fill="#10b981"/>
+              </g>
+
+              <!-- Area fill -->
+              <path id="stockAreaPath" clip-path="url(#chartGrowClip)" fill="url(#chartAreaGrad)"
+                    d="M 0 115 C 25 110, 35 105, 50 105 C 75 105, 85 112, 100 110 C 120 106, 135 78, 155 75 C 175 72, 185 86, 205 84 C 230 80, 240 50, 260 48 C 280 46, 295 62, 315 60 C 335 56, 350 32, 370 28 C 385 25, 395 18, 400 16 L 400 130 L 0 130 Z"/>
+
+              <!-- Growing line -->
+              <path id="stockLinePath" fill="none" stroke="url(#chartLineGrad)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" filter="url(#neonGlow)"
+                    d="M 0 115 C 25 110, 35 105, 50 105 C 75 105, 85 112, 100 110 C 120 106, 135 78, 155 75 C 175 72, 185 86, 205 84 C 230 80, 240 50, 260 48 C 280 46, 295 62, 315 60 C 335 56, 350 32, 370 28 C 385 25, 395 18, 400 16"/>
+
+              <!-- Beacon dot -->
+              <g id="liveBeacon" opacity="0">
+                <circle id="beaconPing" cx="0" cy="115" r="4" fill="none" stroke="#10b981" stroke-width="2"/>
+                <circle id="beaconHalo" cx="0" cy="115" r="6" fill="#10b981" opacity="0.40" filter="url(#neonGlow)"/>
+                <circle id="beaconCore" cx="0" cy="115" r="3" fill="#ffffff"/>
+              </g>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Topics -->
+        <div class="glass-card">
+          <div class="tp-label"><span>📚</span><span>Browse by topic</span></div>
+          <div class="tp-title">Guide categories</div>
+          <div id="topics"></div>
+        </div>
+
+        <!-- Guarantee pill -->
+        <div class="guarantee-pill">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          <span><span class="refund-days">14</span>-day money-back guarantee</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scroll cue -->
+    <div class="scroll-cue">
+      <span>SCROLL</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M6 9l6 6 6-6"/>
+      </svg>
+    </div>
+  </section>
+
+  <!-- SUB-HERO REAL-TIME RUNNING MARKET TAPE (Matching TradingView / Terminal style) -->
+  <div class="hero-running-tape" aria-label="Live Market Ticker">
+    <div class="tape-track" id="heroRunningTape"></div>
+  </div>
+
+  <!-- THREE GUARANTEE PILLARS (Matching user's reference) -->
+  <div class="hero-guarantees-bar">
+    <div class="container hero-guarantees-inner">
+      <div class="guarantee-check-item">
+        <span class="check-circle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+        <span><strong class="refund-days">14</strong>-day guarantee: full refund if the file doesn't load or match its description</span>
+      </div>
+      <div class="guarantee-check-item">
+        <span class="check-circle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+        <span>PDF setup guide and video with every product</span>
+      </div>
+      <div class="guarantee-check-item">
+        <span class="check-circle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+        <span>Built for self-directed traders</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRODUCTS / GUIDES SECTION -->
+  <section class="section" id="products">
+    <div class="container">
+      <div class="section-header">
+        <div>
+          <div class="eyebrow">FEATURED RESOURCES</div>
+          <h2 class="section-title">Products</h2>
+        </div>
+        <a class="view-all-link" href="/products">
+          <span>View all <span class="count">8</span> products</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+      </div>
+
+      <!-- Filter Tabs -->
+      <div class="filter-tabs" id="filters"></div>
+
+      <div class="products-grid" id="productGrid">
+        <!-- Dynamically rendered -->
+      </div>
+    </div>
+  </section>
+
+  <!-- VIDEO & PDF STRATEGIES (Under Products) -->
+  <section class="blog-section" id="strategies" hidden style="padding-top:0"><div class="container"><div class="section-header"><div><div class="eyebrow">STRATEGY LESSONS</div><h2 class="section-title">Video &amp; PDF Strategies</h2></div><a class="view-all-link" href="/products?cat=Strategy"><span>View all strategies</span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a></div><div class="blog-grid" id="strats"></div></div></section>
+
+  <!-- LIVE SESSION SECTION -->
+  <section class="live-section" id="live">
+    <div class="container">
+      <div class="live-grid">
+        <!-- Left: Details -->
+        <div class="live-info">
+          <div class="offline-pill">
+            <span class="offline-dot"></span>
+            <span>Currently offline</span>
+          </div>
+          <h2 class="live-title">
+            Next live session:<br>
+            <span class="blue-accent">around 7 PM</span>
+          </h2>
+          <p class="live-desc">
+            Join our live session for market discussion and Q&amp;A. Register below and we'll email you the exact date, time and link.
+          </p>
+          <ul class="live-features">
+            <li class="live-feature-item"><div class="live-feature-icon">📊</div><span>Live market discussion with worked examples</span></li>
+            <li class="live-feature-item"><div class="live-feature-icon">💬</div><span>Q&amp;A with the host</span></li>
+            <li class="live-feature-item"><div class="live-feature-icon">✉️</div><span>Date, time and link sent by email</span></li>
+          </ul>
+        </div>
+
+        <!-- Right: Registration Form -->
+        <div class="live-form-card">
+          <h3 class="form-title">Reserve Your Spot</h3>
+          <form id="liveForm">
+            <div class="form-group">
+              <label class="form-label" for="userName">Full Name <span>*</span></label>
+              <input class="form-input" id="userName" type="text" placeholder="Your name" maxlength="100" autocomplete="name" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="userEmail">Email Address <span>*</span></label>
+              <input class="form-input" id="userEmail" type="email" placeholder="you@example.com" maxlength="200" autocomplete="email" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="userReason">Why do you want to join? <span>*</span></label>
+              <textarea class="form-input" id="userReason" placeholder="Tell us what you want to learn…" maxlength="2000" required></textarea>
+            </div>
+            <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+            <button class="btn-submit-live" type="submit">
+              <span>📅 Reserve my spot</span>
+            </button>
+            <p class="form-notice" id="formStatusNotice">No spam. We only email you the session details.</p>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONFIDENCE SECTION -->
+  <section class="confidence-section">
+    <div class="container">
+      <div class="risk-free-pill">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        <span>Risk–Free Purchase</span>
+      </div>
+
+      <h2 class="confidence-title">Buy with complete confidence</h2>
+      <p class="confidence-desc">
+        Every guide is backed by our <span class="refund-days">14</span>-day guarantee: full refund, for any reason, within <span class="refund-days">14</span> days of payment.
+      </p>
+
+      <!-- 4 Feature Boxes (matches rocket) -->
+      <div class="confidence-grid">
+        <div class="confidence-box">
+          <div class="confidence-box-icon">🛡️</div>
+          <h4><span class="refund-days">14</span>-Day Guarantee</h4>
+          <p>Full refund for any reason. Request it from your order page.</p>
+        </div>
+        <div class="confidence-box">
+          <div class="confidence-box-icon">🔒</div>
+          <h4>Secure Checkout</h4>
+          <p>Payments are handled by Stripe. Your card details never reach our site.</p>
+        </div>
+        <div class="confidence-box">
+          <div class="confidence-box-icon">⚡</div>
+          <h4>Instant Download</h4>
+          <p>Your licence key and download appear as soon as payment is confirmed. PDF and XLSX files.</p>
+        </div>
+        <div class="confidence-box">
+          <div class="confidence-box-icon">🏆</div>
+          <h4>Clear Education</h4>
+          <p>Plain-language guides with the risks explained next to the ideas.</p>
+        </div>
+      </div>
+
+      <div class="guarantee-box">
+        <div class="shield-circle">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M20 6L9 17l-5-5"/>
+          </svg>
+        </div>
+        <div class="guarantee-box-text">
+          <h4><span class="refund-days">14</span>-day guarantee: full refund, for any reason.</h4>
+          <p>Request it from your order page within <span class="refund-days">14</span> days. We review it and refund through Stripe.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BLOG / ARTICLES SECTION -->
+  <section class="blog-section" id="blog">
+    <div class="container">
+      <div class="section-header">
+        <div>
+          <div class="eyebrow">TRADING INSIGHTS</div>
+          <h2 class="section-title">Latest Articles</h2>
+        </div>
+        <a class="view-all-link" href="/blog">
+          <span>View all articles</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+      </div>
+
+      <div class="blog-grid" id="posts"></div>
+    </div>
+  </section>
+</main>
+
+<!-- FOOTER -->
+<script src="/page.js"></script>
+<script>
+// ====
+(function initGrowingStockLine() {
+  const line = document.getElementById('stockLinePath');
+  const clipRect = document.getElementById('growClipRect');
+  const beacon = document.getElementById('liveBeacon');
+  const beaconPing = document.getElementById('beaconPing');
+  const beaconHalo = document.getElementById('beaconHalo');
+  const beaconCore = document.getElementById('beaconCore');
+  const gainText = document.getElementById('liveGainPct');
+  const priceText = document.getElementById('heroBtcPrice');
+  if (!line || !clipRect || !beacon) return;
+
+  const totalLength = line.getTotalLength();
+  line.style.strokeDasharray = totalLength;
+  line.style.strokeDashoffset = totalLength;
+
+  let startTime = null;
+  const duration = 2400;
+  let tickTimer = null;
+  let basePrice = 68420.50;
+
+  // Sync with live ticker feed if active
+  fetch('/api/ticker').then(r => r.json()).then(d => {
+    const btc = (d.items || []).find(x => x.symbol === 'BTC');
+    if (btc && btc.price) {
+      basePrice = btc.price;
+      if (priceText) priceText.textContent = '$' + btc.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      if (gainText && btc.pct !== undefined) {
+        const up = btc.pct >= 0;
+        gainText.textContent = (up ? '+' : '') + btc.pct.toFixed(2) + '%';
+        const pill = document.getElementById('liveGainPill');
+        if (pill) {
+          pill.firstElementChild.textContent = up ? '▲' : '▼';
+          pill.style.color = up ? '#34d399' : '#f87171';
+          pill.style.background = up ? 'rgba(16,185,129,0.14)' : 'rgba(239,68,68,0.14)';
+        }
+      }
+    }
+  }).catch(() => {});
+
+  function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+  function grow(timestamp) {
+    if (!startTime) startTime = timestamp;
+    const progress = Math.min((timestamp - startTime) / duration, 1);
+    const eased = easeOutCubic(progress);
+    const currentLen = eased * totalLength;
+    line.style.strokeDashoffset = totalLength - currentLen;
+
+    const pt = line.getPointAtLength(currentLen);
+    clipRect.setAttribute('width', Math.max(pt.x + 2, 0));
+
+    beacon.style.opacity = '1';
+    [beaconPing, beaconHalo, beaconCore].forEach(el => {
+      el.setAttribute('cx', pt.x);
+      el.setAttribute('cy', pt.y);
+    });
+
+    if (progress < 1) {
+      requestAnimationFrame(grow);
+    } else {
+      beaconPing.classList.add('live-radar');
+      startLiveTicks(pt);
+    }
+  }
+
+  function startLiveTicks(finalPt) {
+    tickTimer = setInterval(() => {
+      const jitter = (Math.random() - 0.5) * 2;
+      const cy = finalPt.y + jitter;
+      [beaconPing, beaconHalo, beaconCore].forEach(el => el.setAttribute('cy', cy));
+      const delta = (Math.random() - 0.49) * 14;
+      basePrice = Math.max(1000, basePrice + delta);
+      if (priceText) {
+        priceText.textContent = '$' + basePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+    }, 1800);
+
+    setTimeout(() => {
+      clearInterval(tickTimer);
+      beaconPing.classList.remove('live-radar');
+      beacon.style.opacity = '0';
+      startTime = null;
+      requestAnimationFrame(grow);
+    }, 12000);
+  }
+
+  requestAnimationFrame(grow);
+})();
+</script>
+</body>
+</html>

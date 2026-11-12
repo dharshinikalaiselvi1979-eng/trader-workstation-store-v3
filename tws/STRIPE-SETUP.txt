@@ -1,0 +1,63 @@
+CONNECTING STRIPE TO THE TRADER WORKSTATION WEBSITE
+===================================================
+
+1. WHO OWNS THE STRIPE ACCOUNT
+   - The Stripe account must belong to the business that sells the guides (the client), in the country where that business is registered.
+     Stripe does not allow collecting money for someone else's business through your own account.
+   - The client creates the account at stripe.com and sends you the secret key privately (never in a zip, a chat or a screenshot).
+   - If a key was ever shared, roll it: Stripe Dashboard > Developers > API keys > the key > Roll key. Then put the new key in .env.
+
+2. TEST MODE FIRST (no real money)
+   a) Stripe Dashboard > turn on "Test mode" > Developers > API keys > copy the Secret key (starts with sk_test_).
+   b) In the project folder open the file named .env and write:   STRIPE_SECRET_KEY=sk_test_...your key...
+   c) Restart the server (Ctrl+C, then npm start). The terminal says "Stripe: test mode".
+   d) Open  /admin.html  >  Stripe  tab. It should say "Connected to Stripe ...".
+   e) Buy a guide with the test card 4242 4242 4242 4242, any future date, any 3 digits, any ZIP.
+   f) Check: the order page shows keys + download; Admin > Orders shows it; Admin > Stripe tab lists the payment;
+      Stripe Dashboard (Test mode) > Payments shows it too.
+   g) Press "Request refund" on the order page, approve it in Admin > Orders, and see it become Refunded in Stripe.
+
+3. WEBHOOK (recommended before going live)
+   Without it the site still confirms an order when the buyer lands on the order page or when you open the admin.
+   With it, the order is confirmed (and the receipt email sent) even if the buyer closes the tab right after paying.
+   - Testing on your laptop: install the Stripe CLI, run   stripe login   then
+         stripe listen --forward-to localhost:3000/api/webhook
+     It prints a signing secret starting whsec_. Put it in .env as   STRIPE_WEBHOOK_SECRET=whsec_...   and restart.
+     (Use your real port if it is not 3000.)
+   - On the live site: Stripe Dashboard > Developers > Webhooks > Add endpoint.
+         URL:     https://YOUR-DOMAIN/api/webhook
+         Events:  checkout.session.completed, checkout.session.async_payment_succeeded, charge.refunded
+     Copy that endpoint's signing secret into .env as STRIPE_WEBHOOK_SECRET and restart.
+     Test mode and live mode have different webhooks and different secrets.
+
+4. GOING LIVE (real money)
+   [ ] The client activated the Stripe account: business details, identity, bank account for payouts.
+   [ ] Admin > Stripe tab shows "Your Stripe account can accept payments" and "Payouts ... enabled".
+   [ ] The website runs on a public https address (nginx or Caddy in front of Node). Put it in .env as BASE_URL=https://YOUR-DOMAIN
+   [ ] .env now has the LIVE secret key (sk_live_...) and the LIVE webhook secret.
+   [ ] Restart. The terminal says "Stripe: LIVE - real money" and the Stripe tab says LIVE mode.
+   [ ] Make ONE small real purchase with a real card, check the email and download, then refund it in Admin > Orders.
+   [ ] Only then announce the site.
+
+5. PAYMENT HISTORY (where to look)
+   - Admin > Stripe tab: the latest 40 payments straight from Stripe, matched to website orders.
+     "Not on this site" means Stripe has a payment that the website has no order for (for example a charge made by hand in Stripe).
+   - Admin > Orders: every website order, with a "Stripe" link to the payment. Export to CSV from the same page.
+   - Stripe Dashboard > Payments: the full official history, balances and payouts.
+
+6. STRIPE'S RULES FOR THIS KIND OF BUSINESS (checked on Stripe's page "Prohibited and Restricted Businesses", updated 2026-09-22)
+   - Stripe prohibits "funded prop trading" and "get rich quick" schemes (including investment offers that promise high rewards),
+     and businesses that use outrageous claims or fake testimonials.
+   - Stripe restricts many financial services (investment and brokerage services, crypto exchanges and wallets) and may ask extra questions.
+   - Educational PDF guides are not named on the list, but Stripe reviews each business. Describe the business truthfully in the application:
+     "digital educational PDF guides and videos about trading; no signals, no advice, no managing money".
+   - Keep the site as it is now: no invented ratings, sales numbers, testimonials or profit promises, and keep the risk disclosure.
+   - If unsure, ask Stripe support before launch: https://stripe.com/contact
+   - Stripe may change this list. Read it yourself: https://stripe.com/legal/restricted-businesses
+
+7. IF SOMETHING GOES WRONG
+   - "Invalid API Key": the key in .env is wrong, has spaces, or you did not restart.
+   - Checkout does not open: look at the terminal for a line starting "checkout failed". Test and live keys must not be mixed.
+   - Order stays "Confirming your payment": reload the order page; open Admin; set up the webhook (step 3).
+   - Webhook errors "Bad signature": the STRIPE_WEBHOOK_SECRET belongs to a different endpoint or mode. Copy it again.
+   - Redirect goes to the wrong address after paying: set BASE_URL in .env to your real https address.

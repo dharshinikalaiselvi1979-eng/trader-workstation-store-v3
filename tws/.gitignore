@@ -1,0 +1,8 @@
+node_modules
+client/node_modules
+client/dist
+client/.env
+.env
+data
+downloads/*.zip
+downloads/*.pdf

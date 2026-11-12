@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --color-bg:          var(--bg);
+  --color-surface:     var(--surface);
+  --color-subtle:      var(--subtle);
+  --color-border:      var(--border);
+  --color-ink:         var(--ink);
+  --color-muted:       var(--muted);
+  --color-accent:      var(--accent);
+  --color-accent-ink:  var(--accent-ink);
+  --color-primary:     var(--primary);
+  --color-primary-ink: var(--primary-ink);
+  --color-danger:      var(--danger);
+}
+
+/* ---- Light theme (default) ---- */
+:root {
+  --bg:          #f0f4ff;
+  --surface:     #ffffff;
+  --subtle:      #e8eeff;
+  --border:      #d4dcf5;
+  --ink:         #0d1b40;
+  --muted:       #5a6a90;
+  --accent:      #3b82f6;
+  --accent-ink:  #ffffff;
+  --primary:     #0d1b40;
+  --primary-ink: #f0f4ff;
+  --danger:      #dc2626;
+}
+
+/* ---- Dark theme ---- */
+.dark {
+  color-scheme: dark;
+  --bg:          #060913;
+  --surface:     #0f1629;
+  --subtle:      #141e38;
+  --border:      #1e2d50;
+  --ink:         #e2e8ff;
+  --muted:       #7a90c0;
+  --accent:      #60a5fa;
+  --accent-ink:  #0d1b40;
+  --primary:     #111b40;
+  --primary-ink: #e2e8ff;
+  --danger:      #f87171;
+}
+
+@layer base {
+  body {
+    @apply bg-bg text-ink antialiased;
+    font-family: "Plus Jakarta Sans", sans-serif;
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .field {
+    @apply w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-ink placeholder:text-muted transition-colors focus:border-accent focus:outline-none;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-subtle disabled:opacity-50;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-danger px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-60;
+  }
+
+  /* Google Sign-In button */
+  .btn-google {
+    @apply inline-flex w-full items-center justify-center gap-3 rounded-xl border border-border bg-surface px-5 py-3.5 text-sm font-semibold text-ink shadow-sm transition hover:bg-subtle hover:shadow-md active:scale-[0.98];
+  }
+
+  /* Card */
+  .card {
+    @apply rounded-2xl border border-border bg-surface p-6 shadow-sm;
+  }
+
+  /* Stat badge */
+  .stat-pill {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold;
+  }
+}
+

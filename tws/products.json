@@ -1,0 +1,138 @@
+[
+ {
+  "id": "order-flow-mastery",
+  "alias": "vwap-pro",
+  "name": "Institutional Order Flow Mastery",
+  "tagline": "Learn to read volume, delta and footprint charts.",
+  "description": "A PDF guide that explains how order flow data is produced and how traders read it. It covers volume profile, delta, absorption and how to journal what you observe. Educational material for self-directed traders.",
+  "category": "Strategy",
+  "price": 49,
+  "format": "PDF",
+  "features": [
+   "How order flow data is produced",
+   "Reading volume profile and delta",
+   "Absorption and imbalance explained",
+   "A journaling template for your own review"
+  ],
+  "image": "/images/guide-1.jpg"
+ },
+ {
+  "id": "technical-analysis-blueprint",
+  "alias": "momentum-heatmap",
+  "name": "Technical Analysis Blueprint",
+  "tagline": "A structured way to read charts and build a checklist.",
+  "description": "A PDF guide to the core tools of technical analysis: trend, support and resistance, momentum and volume. It shows how to combine them into a written checklist you can test on your own charts.",
+  "category": "Technical",
+  "price": 35,
+  "format": "PDF",
+  "features": [
+   "Trend, support and resistance",
+   "Momentum and volume indicators",
+   "Building a written chart checklist",
+   "How to review your own trades"
+  ],
+  "image": "/images/guide-2.jpg"
+ },
+ {
+  "id": "trader-psychology-discipline",
+  "alias": "pivot-levels",
+  "name": "Trader Psychology & Discipline",
+  "tagline": "Build routines that help you follow your own plan.",
+  "description": "A PDF guide on habits, routines and decision making for traders. It covers pre-market preparation, handling losing streaks, and keeping a trading journal.",
+  "category": "Psychology",
+  "price": 29,
+  "format": "PDF",
+  "features": [
+   "Pre-market routine examples",
+   "Common decision biases",
+   "Handling losing streaks calmly",
+   "Journal prompts"
+  ],
+  "image": "/images/guide-3.jpg"
+ },
+ {
+  "id": "risk-management-playbook",
+  "alias": "vt-market-profile",
+  "name": "Risk Management Playbook",
+  "tagline": "Position sizing and risk rules, with a worksheet.",
+  "description": "A PDF guide with an Excel worksheet. It explains position sizing, stop placement, risk per trade and drawdown limits, and lets you try the numbers with your own account size.",
+  "category": "Risk",
+  "price": 39,
+  "format": "PDF + XLSX",
+  "features": [
+   "Position sizing methods",
+   "Setting risk per trade",
+   "Drawdown limits",
+   "Excel worksheet for your own numbers"
+  ],
+  "image": "/images/guide-4.jpg"
+ },
+ {
+  "id": "crypto-market-structure",
+  "alias": "vt-zero-lag-ma",
+  "name": "Crypto Market Structure Guide",
+  "tagline": "How crypto markets are organised and traded.",
+  "description": "A PDF guide to how crypto exchanges, order books and liquidity work, and how market structure differs from traditional markets.",
+  "category": "Crypto",
+  "price": 44,
+  "format": "PDF",
+  "features": [
+   "Exchanges and order books",
+   "Liquidity and spreads",
+   "Funding and derivatives basics",
+   "Custody and operational risks"
+  ],
+  "image": "/images/guide-1.jpg"
+ },
+ {
+  "id": "forex-fundamentals-macro",
+  "alias": "vwap-anchored-strategy",
+  "name": "Forex Fundamentals & Macro Trading",
+  "tagline": "Understand what moves currency pairs.",
+  "description": "A PDF guide to the forex market: sessions, major pairs, interest rates and economic data releases, and how traders follow them.",
+  "category": "Forex",
+  "price": 42,
+  "format": "PDF",
+  "features": [
+   "Sessions and major pairs",
+   "Interest rates and central banks",
+   "Reading economic calendars",
+   "Costs: spreads and swaps"
+  ],
+  "image": "/images/guide-2.jpg"
+ },
+ {
+  "id": "scalping-day-trading",
+  "alias": "trend-flow",
+  "name": "Scalping & Day Trading Tactics",
+  "tagline": "Short-term trading concepts and their risks.",
+  "description": "A PDF guide to short-term trading: setups, execution, costs and the risks of trading frequently. Includes how to track your results honestly.",
+  "category": "Strategy",
+  "price": 37,
+  "format": "PDF",
+  "features": [
+   "Short-term setup concepts",
+   "Execution and trading costs",
+   "Risks of frequent trading",
+   "Tracking results honestly"
+  ],
+  "image": "/images/guide-3.jpg"
+ },
+ {
+  "id": "swing-trading-masterclass",
+  "alias": "range-scalper",
+  "name": "Swing Trading Masterclass",
+  "tagline": "Multi-day trades: planning, entries and exits.",
+  "description": "A PDF guide to swing trading over days to weeks. It covers choosing markets, planning entries and exits, and reviewing trades.",
+  "category": "Strategy",
+  "price": 52,
+  "format": "PDF",
+  "features": [
+   "Choosing markets to watch",
+   "Planning entries and exits",
+   "Holding through news and gaps",
+   "Trade review template"
+  ],
+  "image": "/images/guide-4.jpg"
+ }
+]

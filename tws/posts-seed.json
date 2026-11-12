@@ -1,0 +1,38 @@
+[
+ {
+  "slug": "why-new-traders-lose-money",
+  "title": "Why New Traders Lose Money: Common Mistakes",
+  "category": "Psychology",
+  "readMin": 6,
+  "image": "/images/guide-1.jpg",
+  "excerpt": "The repeating mistakes behind most early losses, and simple habits that reduce them.",
+  "body": "Most early losses come from a short list of repeating mistakes, not from bad luck. Knowing them in advance is the cheapest lesson you will ever get.\n\n## 1. Risking too much on one trade\nA new trader often risks a large part of the account on a single idea. A few losses in a row then do serious damage. Decide a small fixed risk per trade before you enter, and write it down.\n\n## 2. Trading without a written plan\nIf you cannot say in one sentence why you are entering, where you are wrong, and where you will take profit or exit, you do not have a plan. Without one, every price move feels like an emergency.\n\n## 3. Chasing losses\nAfter a loss, many traders increase size to win it back quickly. This turns a small loss into a large one. A fixed daily loss limit stops this habit.\n\n## 4. Changing the method too often\nSwitching approach after two or three losing trades means you never learn whether the method works. Test one method on a small size for a meaningful number of trades before judging it.\n\n## 5. Skipping the review\nA journal with the reason for entry, the result and one lesson per trade is the fastest way to improve. Review it weekly.\n\nNone of this removes risk. Trading involves substantial risk of loss, and this article is education only, not financial advice."
+ },
+ {
+  "slug": "reading-order-flow-basics",
+  "title": "Reading Order Flow: The Basics",
+  "category": "Strategy",
+  "readMin": 7,
+  "image": "/images/guide-3.jpg",
+  "excerpt": "What order flow data shows, what it does not show, and how traders use it to add context to a chart.",
+  "body": "Order flow looks at the trades and orders that make up price movement, instead of only the candles they form.\n\n## What the data shows\nTwo common views are volume at price and delta. Volume at price shows where most trading happened. Delta compares trades done at the ask with trades done at the bid, which hints at which side was more aggressive.\n\n## What it does not show\nOrder flow does not tell you who is trading or why. A large number of trades at one price can be many small participants or one large one. Treat it as extra context, not proof.\n\n## Using it with a plan\nMany traders combine it with simple levels such as the prior day high and low. They watch how price behaves at those levels, then decide whether the setup fits their rules.\n\n## Keep notes\nSave screenshots of the setups you take and review them. Over time you learn which patterns you read well and which you misread.\n\nThis article is educational only. Trading involves substantial risk of loss."
+ },
+ {
+  "slug": "the-2-percent-rule-explained",
+  "title": "The 2% Rule Explained",
+  "category": "Risk",
+  "readMin": 5,
+  "image": "/images/guide-4.jpg",
+  "excerpt": "How a fixed risk per trade works, with a simple example and its limits.",
+  "body": "The 2% rule says you should not risk more than about 2% of your account on a single trade. Many traders use a smaller number.\n\n## A simple example\nWith a 10,000 account, 2% is 200. If your stop is 1 point away from your entry and each point costs 5, then 200 divided by 5 gives a position of 40 units at most. The stop distance sets the size, not your hope for the trade.\n\n## Why a fixed percentage helps\nWhen risk per trade is small, a losing streak is survivable. Ten losses in a row at 2% still leave most of the account. Without a limit, a few oversized losses can end the account.\n\n## The limits of the rule\nThe rule does not make a trade good. It does not protect against gaps, slippage or several open trades that move together. Count correlated positions as one bigger risk.\n\n## Make it a habit\nCalculate size before every entry, and record it in your journal.\n\nThis article is education only, not financial advice. Trading involves substantial risk of loss."
+ },
+ {
+  "slug": "building-a-trading-journal",
+  "title": "Building a Trading Journal That You Will Actually Use",
+  "category": "Psychology",
+  "readMin": 5,
+  "image": "/images/guide-2.jpg",
+  "excerpt": "A short template for recording trades so you can learn from them.",
+  "body": "A journal only helps if it is quick enough to fill in every time.\n\n## What to record\nWrite the date, the market, why you entered, your planned exit and risk, the result, and one sentence on what you would do differently.\n\n## Add a screenshot\nA chart screenshot at entry and at exit shows what you saw at the time, which memory often changes.\n\n## Rate your own discipline\nGive each trade a simple mark for following your plan, separate from whether it made or lost money. A good decision can lose and a bad one can win.\n\n## Review on a schedule\nSet a weekly time to read the entries. Look for patterns in time of day, market, and mistakes that repeat.\n\nThis article is educational only. Trading involves substantial risk of loss."
+ }
+]

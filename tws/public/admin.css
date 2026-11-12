@@ -1,0 +1,22 @@
+:root{--bg:#060913;--side:#0a0e1c;--card:#0f1629;--line:#1b2440;--text:#eef2ff;--muted:#93a0bf;--blue:#2563eb;--ok:#22c55e;--bad:#f87171;--warn:#fbbf24}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 "Plus Jakarta Sans","Segoe UI",system-ui,sans-serif}
+a{color:#7aa8ff}:focus-visible{outline:3px solid #7aa8ff;outline-offset:2px}
+.login{min-height:100vh;display:grid;place-items:center;padding:20px}.login form{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:32px;width:min(420px,100%)}
+.app{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
+aside{background:var(--side);border-right:1px solid var(--line);padding:22px 14px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:4px}
+aside .logo{font-weight:800;font-size:1.1rem;padding:0 10px 18px}
+aside button.nav{display:flex;justify-content:space-between;background:none;border:0;color:var(--muted);font:inherit;font-weight:500;text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer}
+aside button.nav:hover{background:#18233f;color:var(--text)}aside button.nav[aria-current=true]{background:var(--blue);color:#fff}
+.badge{background:#ef4444;color:#fff;border-radius:99px;font-size:.72rem;padding:0 8px;font-weight:700}
+main{padding:30px;min-width:0}h1{margin:0 0 6px;font-size:1.7rem}h2{font-size:1.15rem;margin:26px 0 10px}.sub{color:var(--muted);margin:0 0 22px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}.card .k{color:var(--muted);font-size:.82rem}.card .v{font-size:1.6rem;font-weight:800;letter-spacing:-.02em}
+.tw{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:14px}table{width:100%;border-collapse:collapse;font-size:.9rem}th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-weight:600;font-size:.8rem}tr:last-child td{border:0}
+label{display:block;font-weight:600;margin:12px 0 4px;font-size:.88rem}input,textarea,select{width:100%;background:#0a1020;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit}
+.btn{background:var(--blue);color:#fff;border:1px solid var(--blue);border-radius:10px;padding:9px 16px;font:inherit;font-weight:600;cursor:pointer}.btn.g{background:none;border-color:var(--line);color:var(--text)}.btn.d{background:none;border-color:#7f1d1d;color:var(--bad)}.btn.s{padding:5px 10px;font-size:.82rem}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.msg{font-weight:600;margin:10px 0}.msg.ok{color:var(--ok)}.msg.bad{color:var(--bad)}.note{color:var(--muted);font-size:.85rem}
+.st{font-weight:700}.st.paid{color:var(--ok)}.st.refund_requested{color:var(--warn)}.st.refunded,.st.expired,.st.pending{color:var(--muted)}
+.form{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;max-width:760px}
+.chk{display:flex;align-items:center;gap:8px}.chk input{width:auto}
+@media(max-width:800px){.app{grid-template-columns:1fr}aside{position:static;height:auto;flex-direction:row;flex-wrap:wrap}aside .logo{width:100%}}
+.filerow{background:#0a1020;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:12px 0}.filerow input[type=file]{padding:8px}

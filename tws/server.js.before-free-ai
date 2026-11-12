@@ -1,0 +1,654 @@
+require('dotenv').config();
+const express = require('express'), fs = require('fs'), path = require('path'), crypto = require('crypto'), Stripe = require('stripe');
+
+const KEY = process.env.STRIPE_SECRET_KEY;
+if (!KEY) { console.error('Missing STRIPE_SECRET_KEY. Copy .env.example to .env and add your key.'); process.exit(1); }
+const sopts = process.env.STRIPE_MOCK_PORT ? { host: 'localhost', port: +process.env.STRIPE_MOCK_PORT, protocol: 'http' } : {};
+const stripe = new Stripe(KEY, sopts);
+const PORT = +process.env.PORT || 3000;
+const REFUND_DAYS = +process.env.REFUND_DAYS || 14; // one source; pages read it from /api/config
+const PUB = path.join(__dirname, 'public'), DATA = path.resolve(process.env.DATA_DIR || path.join(__dirname, 'data')), DL = path.resolve(process.env.DL_DIR || path.join(__dirname, 'downloads'));
+const products = JSON.parse(fs.readFileSync(path.join(__dirname, 'products.json'), 'utf8'));
+const byId = id => products.find(p => p.id === id);
+const byIdOrAlias = id => products.find(p => p.id === id || p.alias === id);
+
+// ---- storage: one JSON file, atomic writes ----
+fs.mkdirSync(DATA, { recursive: true }); fs.mkdirSync(DL, { recursive: true });
+const FILE = path.join(DATA, 'store.json');
+let db = { seq: 0, orders: [], inbox: [], codes: [], posts: null, outbox: [], lookups: [], strategies: [], uploads: {}, sessions: [], users: [], logins: [] };
+try { db = Object.assign(db, JSON.parse(fs.readFileSync(FILE, 'utf8'))); } catch {}
+const save = () => { fs.writeFileSync(FILE + '.tmp', JSON.stringify(db)); fs.renameSync(FILE + '.tmp', FILE); };
+if (!db.posts) {
+  const seed = JSON.parse(fs.readFileSync(path.join(__dirname, 'posts-seed.json'), 'utf8'));
+  db.posts = seed.map((p, i) => Object.assign({ id: ++db.seq, published: true, date: new Date(Date.now() - i * 864e5 * 3).toISOString() }, p));
+  save();
+}
+let ADMIN = process.env.ADMIN_TOKEN;
+const TOKFILE = path.join(DATA, 'admin-token.txt');
+if (!ADMIN) { try { ADMIN = fs.readFileSync(TOKFILE, 'utf8').trim(); } catch {} }
+if (!ADMIN) { ADMIN = crypto.randomBytes(12).toString('hex'); fs.writeFileSync(TOKFILE, ADMIN); }
+
+// ---- helpers ----
+const now = () => new Date().toISOString();
+const money = c => '$' + (c / 100).toFixed(2);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const isPaidLike = o => o.status === 'paid' || o.status === 'refund_requested';
+const baseUrl = req => {
+  const b = process.env.BASE_URL;
+  if (b && !/localhost|127\.0\.0\.1/.test(b)) return b.replace(/\/$/, '');
+  return req.protocol + '://' + req.get('host');
+};
+const key16 = () => crypto.randomBytes(8).toString('hex').toUpperCase().match(/.{4}/g).join('-');
+const refundUntil = o => new Date(new Date(o.paid_at).getTime() + REFUND_DAYS * 864e5);
+const refundable = o => o.status === 'paid' && o.paid_at && new Date() < refundUntil(o);
+const slugify = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
+
+// ---- email: Resend if configured, always logged in the outbox (never breaks checkout) ----
+let smtpT = null;
+const smtpTransport = () => smtpT || (smtpT = require('nodemailer').createTransport({ host: process.env.SMTP_HOST, port: +process.env.SMTP_PORT || 587,
+  secure: process.env.SMTP_SECURE ? process.env.SMTP_SECURE === '1' : +process.env.SMTP_PORT === 465, auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined }));
+async function mail(to, subject, text, html) {
+  const rec = { id: ++db.seq, to, subject, text, sent: false, error: '', created_at: now() };
+  db.outbox.push(rec); if (db.outbox.length > 200) db.outbox.shift();
+  const from = process.env.MAIL_FROM || (process.env.SMTP_USER ? 'Trader WorkStation <' + process.env.SMTP_USER + '>' : 'Trader WorkStation <onboarding@resend.dev>');
+  if (process.env.SMTP_HOST) {
+    try { await smtpTransport().sendMail({ from, to, subject, text, html }); rec.sent = true; }
+    catch (e) { rec.error = /Cannot find module/.test(e.message) ? 'Email sending is not installed. Run "npm install" and restart.' : String(e.message).slice(0, 200); }
+  } else if (process.env.RESEND_API_KEY) {
+    try {
+      const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: 'Bearer ' + process.env.RESEND_API_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ from, to: [to], subject, text, html }) });
+      if (r.ok) rec.sent = true; else rec.error = 'Email service answered HTTP ' + r.status;
+    } catch (e) { rec.error = e.message; }
+  } else rec.error = 'Email service not set up. Message saved here only.';
+  try { save(); } catch {}
+  return rec;
+}
+const receipt = o => 'Thank you for your order at Trader WorkStation.\n\n' +
+  o.items.map(i => '- ' + i.name + ' x ' + i.quantity).join('\n') + '\n\nTotal: ' + money(o.amount) + (o.code ? ' (code ' + o.code + ')' : '') +
+  '\n\nLicence keys:\n' + (o.licenses || []).map(l => '- ' + l.name + ': ' + l.key).join('\n') +
+  '\n\nYour order page (downloads, keys and refund requests):\n' + (o.base || process.env.BASE_URL || '') + '/success.html?session_id=' + o.session_id +
+  '\n\nFull refund within ' + REFUND_DAYS + ' days of payment. Keep this email.\n\nTrading involves substantial risk of loss. Educational use only, not financial advice.\n';
+
+function markPaid(o, s) {
+  if (o.status !== 'pending' && o.status !== 'expired') return;
+  o.status = 'paid'; o.paid_at = now();
+  o.payment_intent = typeof s.payment_intent === 'string' ? s.payment_intent : (s.payment_intent && s.payment_intent.id) || o.payment_intent || null;
+  o.email = (s.customer_details && s.customer_details.email) || s.customer_email || o.email || '';
+  o.licenses = [];
+  for (const it of o.items) for (let i = 0; i < it.quantity; i++) o.licenses.push({ id: it.id, name: it.name, key: key16() });
+  const c = o.code && db.codes.find(x => x.code === o.code); if (c) c.used = (c.used || 0) + 1;
+  save();
+  if (o.email) mail(o.email, 'Your Trader WorkStation order', receipt(o)).catch(() => {});
+}
+async function reconcile(o) {
+  if (o.status !== 'pending' && o.status !== 'expired') return;
+  try {
+    const s = await stripe.checkout.sessions.retrieve(o.session_id);
+    if (s.payment_status === 'paid') markPaid(o, s);
+    else if (s.status === 'expired' && o.status === 'pending') { o.status = 'expired'; save(); }
+  } catch (e) { console.error('reconcile failed:', e.message); }
+}
+const publicOrder = o => ({
+  status: o.status, email: o.email, items: o.items, amount: o.amount, code: o.code || '', token: isPaidLike(o) ? o.token : null,
+  licenses: isPaidLike(o) ? o.licenses || [] : [], refundable: refundable(o), refundUntil: o.paid_at ? refundUntil(o).toISOString() : null
+});
+
+// ---- cart, prices, discount codes ----
+function cartItems(items) {
+  if (!Array.isArray(items) || !items.length) return { error: 'Your cart is empty.' };
+  const saved = [];
+  for (const it of items) {
+    const p = it && byId(it.id), q = it && it.quantity;
+    if (!p || !Number.isInteger(q) || q < 1 || q > 10 || saved.some(s => s.id === p.id)) return { error: 'Invalid item in cart.' };
+    saved.push({ id: p.id, name: p.name, quantity: q });
+  }
+  return { saved };
+}
+function findCode(raw) {
+  if (!raw) return {};
+  const c = db.codes.find(x => x.code === String(raw).trim().toUpperCase());
+  if (!c || !c.active) return { error: 'That code is not valid.' };
+  if (c.expires_at && new Date(c.expires_at) < new Date()) return { error: 'That code has expired.' };
+  if (c.max_uses && (c.used || 0) >= c.max_uses) return { error: 'That code has been used up.' };
+  return { code: c };
+}
+function priceCart(saved, code) {
+  let subtotal = 0, total = 0; const lines = [];
+  for (const s of saved) {
+    const p = byId(s.id), base = Math.round(p.price * 100), unit = code ? Math.max(50, Math.round(base * (100 - code.percent) / 100)) : base;
+    subtotal += base * s.quantity; total += unit * s.quantity;
+    lines.push({ quantity: s.quantity, price_data: { currency: 'usd', unit_amount: unit, product_data: { name: p.name, description: p.tagline } } });
+  }
+  return { lines, subtotal, total };
+}
+
+const app = express();
+app.set('trust proxy', 1);
+
+// ---- optional Stripe webhook (raw body, before express.json) ----
+app.post('/api/webhook', express.raw({ type: '*/*' }), (req, res) => {
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret) return res.status(404).json({ error: 'Not enabled' });
+  let ev;
+  try { ev = stripe.webhooks.constructEvent(req.body, req.get('stripe-signature'), secret); } catch { return res.status(400).json({ error: 'Bad signature' }); }
+  const t = ev.type, obj = ev.data.object;
+  if (t === 'checkout.session.completed' || t === 'checkout.session.async_payment_succeeded') {
+    const o = db.orders.find(x => x.session_id === obj.id); if (o && obj.payment_status === 'paid') markPaid(o, obj);
+  } else if (t === 'charge.refunded' && obj.refunded) {
+    const o = db.orders.find(x => x.payment_intent === obj.payment_intent); if (o) { o.status = 'refunded'; save(); }
+  }
+  res.json({ received: true });
+});
+
+app.use(express.json({ limit: '50kb' }));
+const err = (res, code, msg) => res.status(code).json({ error: msg });
+
+// ---- public API ----
+app.get('/api/config', (req, res) => res.json({ refundDays: REFUND_DAYS }));
+app.get('/api/products', (req, res) => res.json(products));
+const postCard = p => ({ slug: p.slug, title: p.title, category: p.category, excerpt: p.excerpt, image: p.image, date: p.date, readMin: p.readMin });
+app.get('/api/posts', (req, res) => res.json(db.posts.filter(p => p.published).sort((a, b) => b.date.localeCompare(a.date)).map(postCard)));
+app.get('/api/posts/:slug', (req, res) => {
+  const p = db.posts.find(x => x.slug === req.params.slug && x.published);
+  p ? res.json(Object.assign(postCard(p), { body: p.body })) : err(res, 404, 'Not found');
+});
+
+app.post('/api/discount', (req, res) => {
+  const ci = cartItems((req.body || {}).items); if (ci.error) return err(res, 400, ci.error);
+  const f = findCode((req.body || {}).code); if (f.error || !f.code) return err(res, 400, f.error || 'Enter a code.');
+  const pr = priceCart(ci.saved, f.code);
+  res.json({ ok: true, code: f.code.code, percent: f.code.percent, subtotal: pr.subtotal, total: pr.total });
+});
+
+app.post('/api/checkout', async (req, res) => {
+  const ci = cartItems((req.body || {}).items); if (ci.error) return err(res, 400, ci.error);
+  const f = findCode((req.body || {}).code); if (f.error) return err(res, 400, f.error);
+  const pr = priceCart(ci.saved, f.code);
+  try {
+    const b = baseUrl(req);
+    const me = currentUser(req);
+    const session = await stripe.checkout.sessions.create(Object.assign({ mode: 'payment', line_items: pr.lines, success_url: b + '/success.html?session_id={CHECKOUT_SESSION_ID}', cancel_url: b + '/cancel.html' }, me ? { customer_email: me.email } : {}));
+    db.orders.push({ id: ++db.seq, session_id: session.id, token: crypto.randomBytes(16).toString('hex'), payment_intent: null, email: '', amount: pr.total, status: 'pending', items: ci.saved, licenses: [], code: f.code ? f.code.code : '', discount: pr.subtotal - pr.total, base: b, userId: me ? me.id : null, refund_reason: '', admin_note: '', created_at: now(), paid_at: null });
+    save(); res.json({ url: session.url });
+  } catch (e) { console.error('checkout failed:', e.message); err(res, 500, 'Payment could not be started. Please try again.'); }
+});
+
+app.get('/api/order', async (req, res) => {
+  const o = db.orders.find(x => x.session_id === req.query.session_id);
+  if (!o) return err(res, 404, 'Order not found');
+  await reconcile(o); res.json(publicOrder(o));
+});
+
+app.get('/download/:token/:id', (req, res) => {
+  const o = db.orders.find(x => x.token === req.params.token);
+  if (!o || !isPaidLike(o)) return res.status(403).send('Download not available.');
+  const p = byIdOrAlias(req.params.id);
+  if (!p || !o.items.some(i => i.id === p.id)) return res.status(404).send('Not found.');
+  for (const n of [p.id, p.alias]) for (const ext of ['pdf', 'zip']) { const f = path.join(DL, n + '.' + ext); if (n && fs.existsSync(f)) return res.download(f, p.id + '.' + ext); }
+  res.attachment(p.id + '-readme.txt').type('text/plain').send('The file for "' + p.name + '" has not been uploaded yet. Please contact support and quote your order link.\n');
+});
+
+app.post('/api/refund', (req, res) => {
+  const o = db.orders.find(x => x.session_id === (req.body || {}).session_id);
+  if (!o) return err(res, 404, 'Order not found');
+  if (!refundable(o)) return err(res, 400, 'Refunds are possible within ' + REFUND_DAYS + ' days of payment.');
+  o.status = 'refund_requested'; o.refund_reason = String((req.body || {}).reason || '').slice(0, 500); save(); res.json({ ok: true });
+});
+
+const hits = new Map();
+const limited = (key, max) => { const t = Date.now(), l = (hits.get(key) || []).filter(x => t - x < 36e5); if (l.length >= max) return true; l.push(t); hits.set(key, l); return false; };
+const validEmail = e => e.length <= 200 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e);
+
+// ---- live sessions: the owner sets the date and time in the admin ----
+const sessEnd = x => new Date(new Date(x.start).getTime() + (x.durationMin || 60) * 6e4);
+const regsOf = x => db.inbox.filter(m => m.kind === 'live' && m.sessionId === x.id);
+const activeSession = () => db.sessions.filter(x => !x.cancelled && sessEnd(x) > new Date()).sort((a, b) => a.start.localeCompare(b.start))[0] || null;
+const validTz = tz => { try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); return true; } catch { return false; } };
+const whenText = x => new Date(x.start).toLocaleString('en-US', { timeZone: validTz(x.tz) ? x.tz : 'UTC', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
+const spotsLeft = x => x.capacity ? Math.max(0, x.capacity - regsOf(x).length) : null;
+const sessOpen = x => !!x && x.open !== false && (spotsLeft(x) === null || spotsLeft(x) > 0);
+const liveText = () => {
+  const x = activeSession();
+  if (!x) return 'No live session is scheduled right now. Leave your details with the Reserve my spot form on the home page (/#live) and we email you when the next one is set.';
+  return `The next live session is "${x.title}" on ${whenText(x)} (about ${x.durationMin || 60} minutes).${x.description ? ' ' + x.description : ''} ${sessOpen(x) ? 'Register with the Reserve my spot form on the home page (/#live); we email the link before it starts.' : 'Registration for this session is closed or full.'}`;
+};
+app.get('/api/live', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const x = activeSession(); if (!x) return res.json({ state: 'none' });
+  res.json({ state: new Date() >= new Date(x.start) ? 'live' : 'scheduled', session: { title: x.title, start: x.start, end: sessEnd(x).toISOString(), tz: x.tz, when: whenText(x), description: x.description || '', capacity: x.capacity || null, spotsLeft: spotsLeft(x), open: sessOpen(x) } });
+});
+
+app.post('/api/inbox', (req, res) => {
+  const b = req.body || {};
+  if (b.website) return res.json({ ok: true }); // honeypot
+  if (limited('in:' + req.ip, 5)) return err(res, 429, 'Too many messages. Please try again later.');
+  const name = String(b.name || '').trim(), email = String(b.email || '').trim(), message = String(b.message || '').trim();
+  if (!['live', 'contact'].includes(b.kind) || !name || name.length > 100 || !validEmail(email) || !message || message.length > 2000) return err(res, 400, 'Please fill in every field with a valid email address.');
+  let sess = null;
+  if (b.kind === 'live') {
+    sess = activeSession();
+    if (sess && regsOf(sess).some(m => m.email.toLowerCase() === email.toLowerCase())) return res.json({ ok: true }); // already registered
+    if (sess && !sessOpen(sess)) return err(res, 400, spotsLeft(sess) === 0 ? 'Sorry, this session is full.' : 'Registration for this session is closed.');
+  }
+  db.inbox.push({ id: ++db.seq, kind: b.kind, name, email, message, created_at: now(), sessionId: sess ? sess.id : null }); save();
+  const liveMsg = sess ? 'Thanks ' + name + ', your spot for "' + sess.title + '" is saved.\nWhen: ' + whenText(sess) + '\nWe will email the link before it starts.' : 'Thanks ' + name + ', you are on the list. We will email you when the next live session is scheduled.';
+  mail(email, b.kind === 'live' ? (sess ? 'Your spot: ' + sess.title : 'You are on the live session list') : 'We received your message',
+    (b.kind === 'live' ? liveMsg : 'Thanks ' + name + ', we received your message and will reply soon.') + '\n\nTrader WorkStation\n').catch(() => {});
+  res.json({ ok: true });
+});
+
+// find my orders: emailed 30-minute link; the answer never reveals whether an email has orders
+app.post('/api/lookup', (req, res) => {
+  const email = String((req.body || {}).email || '').trim().toLowerCase();
+  if (!validEmail(email)) return err(res, 400, 'Enter a valid email address.');
+  if (limited('lk:' + req.ip, 5)) return err(res, 429, 'Too many requests. Please try again later.');
+  if (db.orders.some(o => o.email.toLowerCase() === email && (isPaidLike(o) || o.status === 'refunded'))) {
+    const t = crypto.randomBytes(20).toString('hex');
+    db.lookups = db.lookups.filter(l => new Date(l.expires) > new Date()).concat({ token: t, email, expires: new Date(Date.now() + 30 * 6e4).toISOString() }); save();
+    mail(email, 'Your Trader WorkStation orders', 'Open this link within 30 minutes to see your orders:\n' + baseUrl(req) + '/my-orders.html?t=' + t + '\n\nIf you did not ask for this, ignore this email.\n').catch(() => {});
+  }
+  res.json({ ok: true });
+});
+app.get('/api/my-orders', (req, res) => {
+  const l = db.lookups.find(x => x.token === req.query.t && new Date(x.expires) > new Date());
+  if (!l) return err(res, 404, 'This link has expired. Request a new one.');
+  res.json(db.orders.filter(o => o.email.toLowerCase() === l.email && (isPaidLike(o) || o.status === 'refunded')).reverse()
+    .map(o => ({ session_id: o.session_id, created_at: o.created_at, status: o.status, amount: o.amount, items: o.items })));
+});
+
+
+// ---- Google sign-in (visitors) + welcome email ----
+const GCLIENT = () => process.env.GOOGLE_CLIENT_ID || '';
+const b64u = x => Buffer.from(String(x).replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+let gcerts = { at: 0, keys: [] };
+async function googleKeys(force) {
+  if (!force && Date.now() - gcerts.at < 36e5 && gcerts.keys.length) return gcerts.keys;
+  const r = await fetch(process.env.GOOGLE_CERTS_URL || 'https://www.googleapis.com/oauth2/v3/certs', { signal: AbortSignal.timeout(6000) });
+  if (!r.ok) throw new Error('certs HTTP ' + r.status);
+  gcerts = { at: Date.now(), keys: (await r.json()).keys || [] }; return gcerts.keys;
+}
+async function verifyGoogle(idToken) {   // checks the signature and every claim ourselves, no extra package
+  const p = String(idToken || '').split('.'); if (p.length !== 3) throw new Error('Bad token');
+  const header = JSON.parse(b64u(p[0]).toString()), pay = JSON.parse(b64u(p[1]).toString());
+  if (header.alg !== 'RS256') throw new Error('Bad algorithm');
+  let jwk = (await googleKeys()).find(k => k.kid === header.kid); if (!jwk) jwk = (await googleKeys(true)).find(k => k.kid === header.kid); if (!jwk) throw new Error('Unknown key');
+  if (!crypto.verify('RSA-SHA256', Buffer.from(p[0] + '.' + p[1]), crypto.createPublicKey({ key: jwk, format: 'jwk' }), b64u(p[2]))) throw new Error('Bad signature');
+  if (!['https://accounts.google.com', 'accounts.google.com'].includes(pay.iss)) throw new Error('Wrong issuer');
+  if (!GCLIENT() || pay.aud !== GCLIENT()) throw new Error('Wrong app');
+  if (!(pay.exp > Date.now() / 1000 - 30)) throw new Error('Expired');
+  if (pay.email_verified !== true && pay.email_verified !== 'true') throw new Error('Email not verified');
+  if (!pay.sub || !pay.email) throw new Error('Missing details');
+  return pay;
+}
+const cookiesOf = req => { const o = {}; String(req.headers.cookie || '').split(';').forEach(c => { const i = c.indexOf('='); if (i > 0) { try { o[c.slice(0, i).trim()] = decodeURIComponent(c.slice(i + 1).trim()); } catch {} } }); return o; };
+const sha = x => crypto.createHash('sha256').update(x).digest('hex');
+const currentUser = req => { const t = cookiesOf(req).tws_session; if (!t) return null; const h = sha(t), l = db.logins.find(x => x.h === h && new Date(x.expires) > new Date()); return l ? db.users.find(u => u.id === l.userId) || null : null; };
+const pubUser = u => ({ name: u.name, email: u.email, picture: u.picture || '' });
+const userOrders = u => db.orders.filter(o => (o.userId === u.id || (o.email && o.email.toLowerCase() === u.email)) && (isPaidLike(o) || o.status === 'refunded'));
+const setCookie = (req, res, val, maxAge) => res.setHeader('Set-Cookie', 'tws_session=' + val + '; Path=/; HttpOnly; SameSite=Lax; Max-Age=' + maxAge + (req.secure ? '; Secure' : ''));
+function welcomeMail(u, base) {
+  const first = String(u.name || '').split(' ')[0] || 'there', site = base || process.env.BASE_URL || '';
+  const text = `Hi ${first},\n\nWelcome to TraderWorkStation!\n\nYour account is ready. Here is what you can do:\n- Browse our PDF trading guides: ${site}/products\n- Read the strategies and articles: ${site}/strategies\n- Join a live session: ${site}/#live\n- Ask the assistant for help any time (the chat button on every page)\n\nEvery guide comes with a ${REFUND_DAYS}-day refund guarantee. Our material is educational only, not financial advice, and trading involves substantial risk of loss.\n\nIf you did not create this account, or you would like it deleted, reply to this email or use ${site}/contact.html.\n\nThe TraderWorkStation team\n`;
+  const html = `<!doctype html><html><body style="margin:0;background:#0a0f1c;font-family:Arial,Helvetica,sans-serif"><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:28px 12px"><table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#111a2e;border:1px solid #1e2b47;border-radius:16px"><tr><td style="padding:32px;color:#e8edf8;font-size:16px;line-height:1.6"><div style="font-size:22px;font-weight:800;color:#fff">Trader<span style="color:#3b82f6">WorkStation</span></div><h1 style="font-size:26px;margin:22px 0 8px;color:#fff">Welcome, ${esc(first)}!</h1><p style="margin:0 0 16px;color:#b8c4dd">Your account is ready. Here is what you can do:</p><ul style="padding-left:18px;margin:0 0 22px;color:#b8c4dd"><li>Browse our PDF trading guides</li><li>Read the strategies and articles</li><li>Join a live session</li><li>Ask the assistant for help any time</li></ul><a href="${esc(site)}/products" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:10px">Browse the guides</a><p style="margin:24px 0 0;color:#8f9db8;font-size:13px">Every guide has a ${REFUND_DAYS}-day refund guarantee. Our material is educational only, not financial advice, and trading involves substantial risk of loss. You got this email because you signed in with Google on TraderWorkStation. To delete your account, use our <a href="${esc(site)}/contact.html" style="color:#7aa8ff">contact page</a>.</p></td></tr></table></td></tr></table></body></html>`;
+  return { subject: 'Welcome to TraderWorkStation', text, html };
+}
+async function sendWelcome(u, base) {
+  const m = welcomeMail(u, base), rec = await mail(u.email, m.subject, m.text, m.html);
+  u.welcomed_at = now(); u.welcome_ok = !!rec.sent; save();
+}
+app.get('/api/auth/config', (req, res) => res.json({ enabled: !!GCLIENT(), clientId: GCLIENT() }));
+app.get('/api/auth/me', (req, res) => { res.set('Cache-Control', 'no-store'); const u = currentUser(req); res.json({ user: u ? pubUser(u) : null }); });
+app.post('/api/auth/google', async (req, res) => {
+  if (!GCLIENT()) return err(res, 404, 'Google sign-in is not set up on this site.');
+  if (limited('auth:' + req.ip, 30)) return err(res, 429, 'Too many attempts. Please try again later.');
+  let p; try { p = await verifyGoogle((req.body || {}).credential); } catch (e) { console.error('google sign-in rejected:', e.message); return err(res, 401, 'Google sign-in could not be verified. Please try again.'); }
+  const pic = /^https:\/\/[\w.-]*googleusercontent\.com\//.test(p.picture || '') ? p.picture.slice(0, 300) : '';
+  let u = db.users.find(x => x.googleId === p.sub), isNew = false;
+  if (!u) { u = { id: ++db.seq, googleId: p.sub, email: String(p.email).toLowerCase(), name: String(p.name || p.email.split('@')[0]).slice(0, 100), picture: pic, created_at: now(), last_login: now(), welcomed_at: null, welcome_ok: false }; db.users.push(u); isNew = true; }
+  else { u.last_login = now(); u.email = String(p.email).toLowerCase(); u.picture = pic; if (p.name) u.name = String(p.name).slice(0, 100); }
+  const token = crypto.randomBytes(32).toString('hex');
+  db.logins = db.logins.filter(l => new Date(l.expires) > new Date()).concat({ h: sha(token), userId: u.id, created: now(), expires: new Date(Date.now() + 30 * 864e5).toISOString() });
+  save(); setCookie(req, res, token, 30 * 86400);
+  if (isNew) sendWelcome(u, baseUrl(req)).catch(e => console.error('welcome email failed:', e.message));
+  res.json({ ok: true, isNew, user: pubUser(u) });
+});
+app.post('/api/auth/logout', (req, res) => { const t = cookiesOf(req).tws_session; if (t) { db.logins = db.logins.filter(l => l.h !== sha(t)); save(); } setCookie(req, res, '', 0); res.json({ ok: true }); });
+app.get('/api/auth/orders', (req, res) => {
+  res.set('Cache-Control', 'no-store'); const u = currentUser(req); if (!u) return err(res, 401, 'Please sign in.');
+  res.json(userOrders(u).reverse().map(o => ({ session_id: o.session_id, created_at: o.created_at, status: o.status, amount: o.amount, items: o.items })));
+});
+app.post('/api/auth/delete', (req, res) => {
+  const u = currentUser(req); if (!u) return err(res, 401, 'Please sign in.');
+  db.users = db.users.filter(x => x !== u); db.logins = db.logins.filter(l => l.userId !== u.id); save(); setCookie(req, res, '', 0); res.json({ ok: true });
+});
+
+// ---- admin ----
+const admin = (req, res, next) => {
+  const t = (req.get('authorization') || '').replace(/^Bearer /, '');
+  const a = Buffer.from(t), b = Buffer.from(ADMIN);
+  if (a.length === b.length && crypto.timingSafeEqual(a, b)) return next();
+  err(res, 401, 'Unauthorized');
+};
+app.get('/api/admin/orders', admin, async (req, res) => {
+  for (const o of db.orders.filter(x => x.status === 'pending').slice(-20)) await reconcile(o);
+  const counted = db.orders.filter(isPaidLike), today = now().slice(0, 10);
+  res.json({
+    totals: { orders: counted.length, cents: counted.reduce((n, o) => n + o.amount, 0), todayCents: counted.filter(o => (o.paid_at || '').startsWith(today)).reduce((n, o) => n + o.amount, 0) },
+    pendingRefunds: db.orders.filter(o => o.status === 'refund_requested').length, messages: db.inbox.length, activeCodes: db.codes.filter(c => c.active).length, live: (() => { const x = activeSession(); return x ? { title: x.title, when: whenText(x), registrants: regsOf(x).length } : null; })(), stripeMode: process.env.STRIPE_MOCK_PORT ? 'test' : /^(sk|rk)_live_/.test(KEY) ? 'live' : 'test', users: db.users.length, tickerStocks: !!process.env.FINNHUB_API_KEY, tickerOff: process.env.TICKER === 'off',
+    orders: db.orders.slice(-300).reverse().map(o => Object.assign({}, o, { items: JSON.stringify(o.items) }))
+  });
+});
+app.get('/api/admin/export.csv', admin, (req, res) => {
+  const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const rows = [['id', 'created', 'paid', 'email', 'status', 'items', 'total_usd', 'code', 'discount_usd']].concat(db.orders.map(o =>
+    [o.id, o.created_at, o.paid_at, o.email, o.status, o.items.map(i => i.name + ' x' + i.quantity).join('; '), (o.amount / 100).toFixed(2), o.code, ((o.discount || 0) / 100).toFixed(2)]));
+  res.type('text/csv').send(rows.map(r => r.map(q).join(',')).join('\n'));
+});
+app.get('/api/admin/sessions', admin, (req, res) => {
+  const t = new Date();
+  res.json({ interest: db.inbox.filter(m => m.kind === 'live' && !m.sessionId).length, items: db.sessions.slice().sort((a, b) => b.start.localeCompare(a.start)).map(x => Object.assign({}, x, {
+    end: sessEnd(x).toISOString(), when: whenText(x), spotsLeft: spotsLeft(x), state: x.cancelled ? 'cancelled' : t >= sessEnd(x) ? 'ended' : t >= new Date(x.start) ? 'live' : 'upcoming',
+    registrants: regsOf(x).map(m => ({ name: m.name, email: m.email, created_at: m.created_at, message: m.message })) })) });
+});
+app.post('/api/admin/sessions', admin, async (req, res) => {
+  const b = req.body || {}, find = () => db.sessions.find(x => x.id === b.id);
+  if (b.action === 'delete') { db.sessions = db.sessions.filter(x => x.id !== b.id); save(); return res.json({ ok: true }); }
+  if (b.action === 'cancel') {
+    const x = find(); if (!x) return err(res, 404, 'Session not found');
+    x.cancelled = !x.cancelled; save();
+    if (x.cancelled && b.notify) for (const m of regsOf(x)) await mail(m.email, 'Live session cancelled: ' + x.title, 'The live session "' + x.title + '" (' + whenText(x) + ') has been cancelled. We will email you when a new date is set.\n\nTrader WorkStation\n');
+    return res.json({ ok: true });
+  }
+  if (b.action === 'remind') {
+    const x = find(); if (!x) return err(res, 404, 'Session not found');
+    const regs = regsOf(x);
+    for (const m of regs) await mail(m.email, 'Reminder: ' + x.title, 'Hi ' + m.name + ',\n\n"' + x.title + '" starts ' + whenText(x) + '.\n' + (x.joinUrl ? 'Join here: ' + x.joinUrl + '\n' : 'We will send the join link shortly.\n') + '\nTrader WorkStation\n');
+    x.reminded_at = now(); save(); return res.json({ ok: true, sent: regs.length });
+  }
+  const start = new Date(b.start); if (isNaN(start)) return err(res, 400, 'Choose a valid date and time.');
+  const joinUrl = String(b.joinUrl || '').trim(); if (joinUrl && !/^https?:\/\/\S+$/i.test(joinUrl)) return err(res, 400, 'The join link must start with http:// or https://');
+  const rec = { title: String(b.title || '').trim().slice(0, 100) || 'Live session', start: start.toISOString(), tz: validTz(b.tz) ? b.tz : 'UTC',
+    durationMin: Math.min(480, Math.max(15, Math.round(+b.durationMin) || 60)), capacity: Math.max(0, Math.min(10000, Math.round(+b.capacity) || 0)),
+    description: String(b.description || '').trim().slice(0, 500), joinUrl, open: b.open !== false };
+  const x = b.id && find();
+  if (x) Object.assign(x, rec); else db.sessions.push(Object.assign({ id: ++db.seq, cancelled: false, created_at: now() }, rec));
+  save(); res.json({ ok: true });
+});
+
+// ---- Stripe connection check and payment history (read-only, straight from Stripe) ----
+const stripeMode = () => process.env.STRIPE_MOCK_PORT ? 'mock' : /^(sk|rk)_live_/.test(KEY) ? 'live' : 'test';
+app.get('/api/admin/stripe', admin, async (req, res) => {
+  const mode = stripeMode(), base = baseUrl(req), out = { mode, keyType: KEY.slice(0, 7), webhook: { enabled: !!process.env.STRIPE_WEBHOOK_SECRET, url: base + '/api/webhook' }, baseUrl: base, refundDays: REFUND_DAYS, warnings: [] };
+  if (mode === 'live' && (/localhost|127\.0\.0\.1/.test(base) || !/^https:/.test(base))) out.warnings.push('Your site address is ' + base + '. For real payments it should be your public https address. Set BASE_URL in .env.');
+  if (mode === 'live' && !process.env.STRIPE_WEBHOOK_SECRET) out.warnings.push('No webhook is set up. Orders still confirm when the buyer lands on the order page or you open the admin, but a webhook is safer (see STRIPE-SETUP.txt).');
+  try {
+    const a = await stripe.accounts.retrieve();
+    out.account = { id: a.id, country: a.country, email: a.email, name: (a.business_profile && a.business_profile.name) || (a.settings && a.settings.dashboard && a.settings.dashboard.display_name) || '', charges_enabled: !!a.charges_enabled, payouts_enabled: !!a.payouts_enabled, details_submitted: !!a.details_submitted, currency: a.default_currency };
+  } catch (e) { out.error = String(e.message || 'Could not reach Stripe').slice(0, 300); }
+  res.json(out);
+});
+app.get('/api/admin/stripe/payments', admin, async (req, res) => {
+  try {
+    const list = await stripe.charges.list({ limit: 40 }), mode = stripeMode();
+    res.json({ mode, items: list.data.map(c => {
+      const o = c.payment_intent && db.orders.find(x => x.payment_intent === (typeof c.payment_intent === 'string' ? c.payment_intent : c.payment_intent.id));
+      const pi = typeof c.payment_intent === 'string' ? c.payment_intent : c.payment_intent && c.payment_intent.id;
+      return { id: c.id, paymentIntent: pi || '', amount: c.amount, refunded: c.amount_refunded || 0, currency: c.currency, status: c.status, paid: !!c.paid, email: (c.billing_details && c.billing_details.email) || c.receipt_email || '', created: new Date(c.created * 1000).toISOString(), receipt: c.receipt_url || '', orderId: o ? o.id : null };
+    }) });
+  } catch (e) { err(res, 502, 'Stripe said: ' + String(e.message || 'could not load payments').slice(0, 200)); }
+});
+app.get('/api/admin/users', admin, (req, res) => res.json(db.users.slice().reverse().map(u => ({ id: u.id, name: u.name, email: u.email, picture: u.picture, created_at: u.created_at, last_login: u.last_login, welcomed_at: u.welcomed_at, welcome_ok: !!u.welcome_ok, orders: userOrders(u).length }))));
+app.post('/api/admin/users', admin, async (req, res) => {
+  const b = req.body || {}, u = db.users.find(x => x.id === b.id); if (!u) return err(res, 404, 'User not found');
+  if (b.action === 'delete') { db.users = db.users.filter(x => x !== u); db.logins = db.logins.filter(l => l.userId !== u.id); save(); return res.json({ ok: true }); }
+  if (b.action === 'welcome') { await sendWelcome(u, baseUrl(req)); return res.json({ ok: true, sent: u.welcome_ok }); }
+  err(res, 400, 'Bad action');
+});
+app.get('/api/admin/inbox', admin, (req, res) => res.json(db.inbox.slice(-300).reverse()));
+app.get('/api/admin/outbox', admin, (req, res) => res.json(db.outbox.slice(-100).reverse()));
+app.post('/api/admin/resend', admin, (req, res) => {
+  const o = db.orders.find(x => x.id === (req.body || {}).id);
+  if (!o || !isPaidLike(o) || !o.email) return err(res, 400, 'Order has no email or is not paid.');
+  mail(o.email, 'Your Trader WorkStation order', receipt(o)).then(() => res.json({ ok: true }));
+});
+app.post('/api/admin/refund', admin, async (req, res) => {
+  const { id, action, note } = req.body || {};
+  const o = db.orders.find(x => x.id === id);
+  if (!['approve', 'reject'].includes(action)) return err(res, 400, 'Bad action');
+  if (!o || !isPaidLike(o) || (action === 'reject' && o.status !== 'refund_requested')) return err(res, 400, 'Order cannot be changed.');
+  if (action === 'reject') { o.status = 'paid'; o.admin_note = String(note || '').slice(0, 500); save(); return res.json({ ok: true }); }
+  try {
+    if (o.payment_intent) await stripe.refunds.create({ payment_intent: o.payment_intent });
+    o.status = 'refunded'; o.admin_note = String(note || '').slice(0, 500); save();
+    if (o.email) mail(o.email, 'Your refund', 'Your order was refunded in full. It can take a few days to show on your statement.\n').catch(() => {});
+    res.json({ ok: true });
+  } catch (e) { console.error('refund failed:', e.message); err(res, 502, 'Stripe refused the refund: ' + e.message); }
+});
+app.get('/api/admin/codes', admin, (req, res) => res.json(db.codes));
+app.post('/api/admin/codes', admin, (req, res) => {
+  const b = req.body || {}, code = String(b.code || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 30), pct = Math.round(+b.percent);
+  if (b.action === 'toggle') { const c = db.codes.find(x => x.code === code); if (!c) return err(res, 404, 'Code not found'); c.active = !c.active; save(); return res.json({ ok: true }); }
+  if (b.action === 'delete') { db.codes = db.codes.filter(x => x.code !== code); save(); return res.json({ ok: true }); }
+  if (!code || !(pct >= 1 && pct <= 90)) return err(res, 400, 'Enter a code and a percent from 1 to 90.');
+  if (db.codes.some(x => x.code === code)) return err(res, 400, 'That code already exists.');
+  const mu = Math.round(+b.maxUses) || 0, ex = b.expires ? new Date(b.expires + 'T23:59:59').toISOString() : null;
+  db.codes.push({ code, percent: pct, active: true, used: 0, max_uses: mu > 0 ? mu : null, expires_at: ex, created_at: now() }); save(); res.json({ ok: true });
+});
+app.get('/api/admin/posts', admin, (req, res) => res.json(db.posts.slice().sort((a, b) => b.date.localeCompare(a.date))));
+app.post('/api/admin/posts', admin, (req, res) => {
+  const b = req.body || {};
+  if (b.action === 'delete') { db.posts = db.posts.filter(p => p.id !== b.id); save(); return res.json({ ok: true }); }
+  const title = String(b.title || '').trim().slice(0, 140), body = String(b.body || '').trim().slice(0, 20000);
+  if (!title || !body) return err(res, 400, 'A title and text are required.');
+  const cat = String(b.category || 'Strategy').slice(0, 30), excerpt = String(b.excerpt || body.replace(/^## .*$/gm, '').trim().slice(0, 140)).slice(0, 220);
+  const readMin = Math.max(1, Math.round(body.split(/\s+/).length / 200)), pub = b.published !== false;
+  let p = b.id && db.posts.find(x => x.id === b.id);
+  if (p) Object.assign(p, { title, body, category: cat, excerpt, readMin, published: pub });
+  else {
+    let slug = slugify(title) || 'post', n = 2; while (db.posts.some(x => x.slug === slug)) slug = slugify(title) + '-' + n++;
+    db.posts.push({ id: ++db.seq, slug, title, body, category: cat, excerpt, readMin, published: pub, date: now(), image: '/images/guide-' + (1 + db.posts.length % 4) + '.jpg' });
+  }
+  save(); res.json({ ok: true });
+});
+
+
+
+require('./assistant')(app, { db, products, byId, byIdOrAlias, REFUND_DAYS, admin, err, save, limited, isPaidLike, now, liveText, DATA, currentUser, userOrders });
+
+// ---- live market ticker: cached so visitors never hit the data providers directly ----
+// Crypto: Binance public market data (no key). US stocks/ETFs: Finnhub (free key in FINNHUB_API_KEY).
+const symList = (v, d) => String(v || d).split(',').map(x => x.trim().toUpperCase()).filter(x => /^[A-Z0-9.\-]{1,10}$/.test(x)).slice(0, 12);
+const T_CRYPTO = symList(process.env.TICKER_CRYPTO, 'BTC,ETH,SOL,BNB,XRP'), T_STOCKS = symList(process.env.TICKER_STOCKS, 'SPY,QQQ,AAPL,MSFT,NVDA,TSLA,AMZN');
+const TNAMES = { BTC: 'Bitcoin', ETH: 'Ethereum', SOL: 'Solana', BNB: 'BNB', XRP: 'XRP', SPY: 'S&P 500 ETF', QQQ: 'Nasdaq 100 ETF', DIA: 'Dow ETF', AAPL: 'Apple', MSFT: 'Microsoft', NVDA: 'Nvidia', TSLA: 'Tesla', AMZN: 'Amazon' };
+let tick = { at: 0, items: [], okAt: { crypto: 0, stock: 0 } }, tickBusy = null;
+const getJson = async (url) => { const r = await fetch(url, { signal: AbortSignal.timeout(6000) }); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); };
+async function loadTicker() {
+  const fresh = { crypto: [], stock: [] };
+  const jobs = [(async () => {
+    const arr = await getJson((process.env.BINANCE_URL || 'https://data-api.binance.vision') + '/api/v3/ticker/24hr?symbols=' + encodeURIComponent(JSON.stringify(T_CRYPTO.map(x => x + 'USDT'))));
+    for (const x of T_CRYPTO) { const a = arr.find(q => q.symbol === x + 'USDT'); if (a && +a.lastPrice > 0) fresh.crypto.push({ symbol: x, name: TNAMES[x] || x, kind: 'crypto', price: +a.lastPrice, change: +a.priceChange || 0, pct: +a.priceChangePercent || 0, closed: false }); }
+  })()];
+  if (process.env.FINNHUB_API_KEY) jobs.push((async () => {
+    const rs = await Promise.allSettled(T_STOCKS.map(async x => {
+      const q = await getJson((process.env.FINNHUB_URL || 'https://finnhub.io/api/v1') + '/quote?symbol=' + encodeURIComponent(x) + '&token=' + encodeURIComponent(process.env.FINNHUB_API_KEY));
+      if (!q || !(q.c > 0)) return null;
+      return { symbol: x, name: TNAMES[x] || x, kind: 'stock', price: q.c, change: q.d || 0, pct: q.dp || 0, closed: !q.t || Date.now() / 1000 - q.t > 1800 };
+    }));
+    rs.forEach(r => { if (r.status === 'fulfilled' && r.value) fresh.stock.push(r.value); });
+  })());
+  (await Promise.allSettled(jobs)).forEach(r => { if (r.status === 'rejected') console.error('ticker:', r.reason.message); });
+  const t = Date.now(), prev = tick.items, okAt = Object.assign({}, tick.okAt);
+  const keep = k => { if (fresh[k].length) { okAt[k] = t; return fresh[k]; } return t - okAt[k] < 600000 ? prev.filter(i => i.kind === k) : []; };
+  tick = { at: t, okAt, items: [].concat(keep('stock'), keep('crypto')) };
+}
+const getTicker = () => {
+  if (Date.now() - tick.at < (+process.env.TICKER_CACHE_MS || 15000)) return Promise.resolve(tick);
+  return tickBusy || (tickBusy = loadTicker().then(() => tick).finally(() => { tickBusy = null; }));
+};
+app.get('/api/ticker', async (req, res) => {
+  res.set('Cache-Control', 'public, max-age=10');
+  if (process.env.TICKER === 'off') return res.json({ items: [], sources: [] });
+  try { const t = await getTicker(); res.json({ updated: new Date(t.at).toISOString(), items: t.items, sources: ['Binance'].concat(process.env.FINNHUB_API_KEY ? ['Finnhub'] : []) }); }
+  catch (e) { res.json({ items: tick.items, sources: [] }); }
+});
+
+// ---- strategies: admin uploads PDF, video, AI audio and English captions ----
+const UP = path.join(DATA, 'uploads'); fs.mkdirSync(UP, { recursive: true });
+const MAXV = +process.env.MAX_VIDEO_MB || 1000;
+const KINDS = {
+  pdf: { exts: { pdf: 'application/pdf' }, max: 100 },
+  video: { exts: { mp4: 'video/mp4', m4v: 'video/mp4', webm: 'video/webm' }, max: MAXV },
+  audio: { exts: { mp3: 'audio/mpeg', m4a: 'audio/mp4', wav: 'audio/wav', ogg: 'audio/ogg' }, max: 200 },
+  captions: { exts: { vtt: 'text/vtt; charset=utf-8', srt: 'text/vtt; charset=utf-8' }, max: 2 },
+  image: { exts: { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }, max: 8 }
+};
+function magicOk(kind, ext, h) {
+  const t = h.toString('latin1');
+  if (kind === 'pdf') return t.startsWith('%PDF-');
+  if (kind === 'video') return ext === 'webm' ? (h[0] === 0x1a && h[1] === 0x45 && h[2] === 0xdf && h[3] === 0xa3) : t.slice(4, 8) === 'ftyp';
+  if (kind === 'audio') return ext === 'mp3' ? (t.startsWith('ID3') || (h[0] === 0xff && (h[1] & 0xe0) === 0xe0)) : ext === 'm4a' ? t.slice(4, 8) === 'ftyp' : ext === 'wav' ? t.startsWith('RIFF') : t.startsWith('OggS');
+  if (kind === 'image') return ext === 'png' ? t.startsWith('\x89PNG') : ext === 'webp' ? t.startsWith('RIFF') : (h[0] === 0xff && h[1] === 0xd8);
+  return true;
+}
+const toVtt = txt => { txt = txt.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n'); return /^WEBVTT/.test(txt) ? txt : 'WEBVTT\n\n' + txt.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2'); };
+const upFile = u => path.join(UP, u.id + '.' + u.ext);
+function addUpload(kind, name, ext, size) {
+  const id = crypto.randomBytes(12).toString('hex');
+  db.uploads[id] = { id, kind, name, ext, size, mime: KINDS[kind].exts[ext] || 'application/octet-stream', created: now() }; return db.uploads[id];
+}
+function dropUpload(id) { const u = db.uploads[id]; if (!u) return; fs.unlink(upFile(u), () => {}); delete db.uploads[id]; }
+app.put('/api/admin/upload', admin, (req, res) => {
+  const kind = String(req.query.kind || ''), k = KINDS[kind];
+  if (!k) return err(res, 400, 'Unknown file type.');
+  const orig = path.basename(String(req.query.name || 'file')).replace(/[^\w.\- ]/g, '_').slice(0, 120), ext = (orig.split('.').pop() || '').toLowerCase();
+  if (!k.exts[ext]) return err(res, 400, 'For ' + kind + ' use: ' + Object.keys(k.exts).join(', ') + '.');
+  const max = k.max * 1048576;
+  if (+req.get('content-length') > max) return err(res, 413, 'File is too large (limit ' + k.max + ' MB).');
+  const tmp = path.join(UP, crypto.randomBytes(8).toString('hex') + '.part'), out = fs.createWriteStream(tmp);
+  let size = 0, head = Buffer.alloc(0), done = false;
+  const reject = (code, msg) => { if (done) return; done = true; out.destroy(); fs.unlink(tmp, () => {}); if (!res.headersSent) err(res, code, msg); };
+  req.on('data', c => { size += c.length; if (head.length < 16) head = Buffer.concat([head, c]).slice(0, 16); if (size > max) { req.unpipe(out); reject(413, 'File is too large (limit ' + k.max + ' MB).'); } });
+  req.on('aborted', () => reject(400, 'Upload interrupted.')); req.on('error', () => reject(400, 'Upload interrupted.'));
+  out.on('error', () => reject(500, 'Could not save the file.'));
+  out.on('finish', () => {
+    if (done) return;
+    if (!size) return reject(400, 'The file is empty.');
+    if (!magicOk(kind, ext, head)) return reject(400, 'That does not look like a real ' + ext.toUpperCase() + ' file.');
+    const stored = kind === 'captions' ? 'vtt' : ext, u = addUpload(kind, orig, stored, size);
+    try {
+      if (kind === 'captions') { const t = fs.readFileSync(tmp, 'utf8'); fs.writeFileSync(tmp, toVtt(t)); u.size = fs.statSync(tmp).size; }
+      fs.renameSync(tmp, upFile(u)); done = true; save(); res.json({ id: u.id, name: u.name, size: u.size, kind });
+    } catch (e) { delete db.uploads[u.id]; reject(500, 'Could not save the file.'); }
+  });
+  req.pipe(out);
+});
+function splitText(t, n) { const out = []; let cur = ''; for (const s of t.replace(/\s+/g, ' ').split(/(?<=[.!?])\s+/)) { if ((cur + ' ' + s).length > n && cur) { out.push(cur); cur = ''; } cur = (cur ? cur + ' ' : '') + s; while (cur.length > n) { out.push(cur.slice(0, n)); cur = cur.slice(n); } } if (cur.trim()) out.push(cur); return out; }
+async function ttsMp3(text) {
+  const key = process.env.OPENAI_API_KEY; if (!key) throw new Error('AI voice is not set up. Add OPENAI_API_KEY to .env, or upload an audio file.');
+  const bufs = [];
+  for (const c of splitText(text, 3800)) {
+    const r = await fetch(process.env.TTS_URL || 'https://api.openai.com/v1/audio/speech', { method: 'POST', headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: process.env.TTS_MODEL || 'tts-1', voice: process.env.TTS_VOICE || 'alloy', input: c, response_format: 'mp3' }) });
+    if (!r.ok) throw new Error('The voice service answered HTTP ' + r.status + '.'); bufs.push(Buffer.from(await r.arrayBuffer()));
+  }
+  return Buffer.concat(bufs);
+}
+const FKEYS = ['pdf', 'video', 'audio', 'captions', 'image'];
+const upMeta = id => { const u = db.uploads[id]; return u ? { id: u.id, name: u.name, size: u.size } : null; };
+app.get('/api/admin/strategies', admin, (req, res) => res.json({ ttsAvailable: !!process.env.OPENAI_API_KEY, maxVideoMb: MAXV,
+  items: db.strategies.slice().sort((a, b) => b.date.localeCompare(a.date)).map(s => Object.assign({}, s, { files: Object.fromEntries(FKEYS.map(k => [k, upMeta(s.files[k])])) })) }));
+app.post('/api/admin/strategies', admin, async (req, res) => {
+  const b = req.body || {};
+  if (b.action === 'delete') { const s = db.strategies.find(x => x.id === b.id); if (s) { FKEYS.forEach(k => s.files[k] && dropUpload(s.files[k])); db.strategies = db.strategies.filter(x => x !== s); save(); } return res.json({ ok: true }); }
+  if (b.action === 'tts') {
+    const text = String(b.text || '').trim().slice(0, 20000); if (!text) return err(res, 400, 'Write the text first, then generate the voice.');
+    try { const buf = await ttsMp3(text), u = addUpload('audio', 'ai-narration.mp3', 'mp3', buf.length); fs.writeFileSync(upFile(u), buf); save(); return res.json({ id: u.id, name: u.name, size: u.size, kind: 'audio' }); }
+    catch (e) { console.error('tts failed:', e.message); return err(res, 502, e.message); }
+  }
+  const title = String(b.title || '').trim().slice(0, 140), body = String(b.body || '').trim().slice(0, 20000), files = {};
+  for (const k of FKEYS) { const id = String((b.files || {})[k] || ''); if (id) { const u = db.uploads[id]; if (!u || u.kind !== k) return err(res, 400, 'A file is missing. Upload it again.'); files[k] = id; } }
+  if (!title) return err(res, 400, 'A title is required.');
+  if (!body && !files.pdf && !files.video && !files.audio) return err(res, 400, 'Add some text or at least one file.');
+  const cat = String(b.category || 'Strategy').slice(0, 30), summary = String(b.summary || body.replace(/^## .*$/gm, '').trim().slice(0, 160)).slice(0, 240), pub = b.published !== false, ai = !!b.aiAudio;
+  let s = b.id && db.strategies.find(x => x.id === b.id);
+  if (s) { FKEYS.forEach(k => { if (s.files[k] && s.files[k] !== files[k]) dropUpload(s.files[k]); }); Object.assign(s, { title, body, category: cat, summary, published: pub, aiAudio: ai, files }); }
+  else {
+    let slug = slugify(title) || 'strategy', n = 2; while (db.strategies.some(x => x.slug === slug)) slug = slugify(title) + '-' + n++;
+    db.strategies.push({ id: ++db.seq, slug, title, body, category: cat, summary, published: pub, aiAudio: ai, files, date: now() });
+  }
+  save(); res.json({ ok: true });
+});
+const stratImg = s => s.files.image ? '/media/' + s.files.image : '/images/guide-' + (s.id % 4 + 1) + '.jpg';
+const stratCard = s => ({ slug: s.slug, title: s.title, category: s.category, summary: s.summary, image: stratImg(s), date: s.date, has: { video: !!s.files.video, pdf: !!s.files.pdf, audio: !!s.files.audio, captions: !!s.files.captions } });
+app.get('/api/strategies', (req, res) => res.json(db.strategies.filter(s => s.published).sort((a, b) => b.date.localeCompare(a.date)).map(stratCard)));
+app.get('/api/strategies/:slug', (req, res) => {
+  const s = db.strategies.find(x => x.slug === req.params.slug && x.published); if (!s) return err(res, 404, 'Not found');
+  const f = k => s.files[k] ? { url: '/media/' + s.files[k], name: db.uploads[s.files[k]].name, size: db.uploads[s.files[k]].size, mime: db.uploads[s.files[k]].mime } : null;
+  res.json(Object.assign(stratCard(s), { body: s.body, aiAudio: s.aiAudio, files: { pdf: f('pdf'), video: f('video'), audio: f('audio'), captions: f('captions') } }));
+});
+app.get('/media/:id', (req, res) => {
+  const u = db.uploads[req.params.id];
+  if (!u || !db.strategies.some(s => s.published && Object.values(s.files).includes(u.id)) || !fs.existsSync(upFile(u))) return res.status(404).send('Not found.');
+  res.setHeader('Content-Type', u.mime); res.setHeader('X-Content-Type-Options', 'nosniff');
+  if (u.kind === 'pdf') res.setHeader('Content-Disposition', (req.query.download ? 'attachment' : 'inline') + '; filename="' + u.name.replace(/"/g, '') + '"');
+  res.sendFile(upFile(u));
+});
+
+// ---- pages (with search-engine tags filled in on the server) ----
+function sendPage(res, file, meta) {
+  let html = fs.readFileSync(path.join(PUB, file), 'utf8');
+  if (meta) {
+    const t = esc(meta.title), d = esc(meta.desc);
+    html = html.replace(/<title>[\s\S]*?<\/title>/, '<title>' + t + '</title>').replace(/<meta name="description" content="[^"]*">/, '<meta name="description" content="' + d + '">');
+    html = html.replace('</head>', '<meta property="og:title" content="' + t + '"><meta property="og:description" content="' + d + '"><meta property="og:type" content="' + (meta.type || 'website') + '">' + (meta.image ? '<meta property="og:image" content="' + esc(meta.image) + '">' : '') + (meta.ld ? '<script type="application/ld+json">' + JSON.stringify(meta.ld).replace(/</g, '\\u003c') + '</script>' : '') + '</head>');
+  }
+  res.type('html').send(html);
+}
+const page = f => (req, res) => sendPage(res, f);
+for (const r of ['/products', '/shop', '/shop.html']) app.get(r, page('products.html'));
+app.get('/blog', page('blog.html'));
+app.get('/strategies', page('strategies.html'));
+app.get('/strategies/:slug', (req, res) => {
+  const s = db.strategies.find(x => x.slug === req.params.slug && x.published);
+  if (!s) return res.status(404).send(fs.readFileSync(path.join(PUB, '404.html'), 'utf8'));
+  sendPage(res, 'strategy.html', { title: s.title + ' | Trader WorkStation', desc: s.summary, type: 'article', image: baseUrl(req) + stratImg(s) });
+});
+app.get('/p/:id', (req, res) => {
+  const p = byIdOrAlias(req.params.id);
+  if (!p) return res.status(404).send(fs.readFileSync(path.join(PUB, '404.html'), 'utf8'));
+  const b = baseUrl(req);
+  sendPage(res, 'product.html', { title: p.name + ' | Trader WorkStation', desc: p.tagline + ' ' + p.format + ' guide. Educational use only.', type: 'product', image: b + p.image,
+    ld: { '@context': 'https://schema.org', '@type': 'Product', name: p.name, description: p.description, image: b + p.image, offers: { '@type': 'Offer', price: p.price.toFixed(2), priceCurrency: 'USD', availability: 'https://schema.org/InStock', url: b + '/p/' + p.id } } });
+});
+app.get('/blog/:slug', (req, res) => {
+  const p = db.posts.find(x => x.slug === req.params.slug && x.published);
+  if (!p) return res.status(404).send(fs.readFileSync(path.join(PUB, '404.html'), 'utf8'));
+  sendPage(res, 'post.html', { title: p.title + ' | Trader WorkStation', desc: p.excerpt, type: 'article', image: baseUrl(req) + p.image });
+});
+app.get('/robots.txt', (req, res) => res.type('text').send('User-agent: *\nDisallow: /admin.html\nDisallow: /api/\nSitemap: ' + baseUrl(req) + '/sitemap.xml\n'));
+app.get('/sitemap.xml', (req, res) => {
+  const b = baseUrl(req);
+  const urls = ['/', '/products', '/blog', '/strategies', '/about.html', '/contact.html', '/faq.html', '/refund-policy.html', '/terms.html', '/privacy.html', '/risk-disclosure.html', '/find-orders.html', ...products.map(p => '/p/' + p.id), ...db.posts.filter(p => p.published).map(p => '/blog/' + p.slug), ...db.strategies.filter(p => p.published).map(p => '/strategies/' + p.slug)];
+  res.type('xml').send('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + urls.map(u => '<url><loc>' + b + u + '</loc></url>').join('') + '</urlset>');
+});
+app.use(express.static(PUB, { extensions: ['html'] }));
+app.use((req, res) => {
+  if (req.path.startsWith('/api/')) return err(res, 404, 'Not found');
+  res.status(404).sendFile(path.join(PUB, '404.html'));
+});
+
+if (require.main === module) { const server = app.listen(PORT, () => {
+  const live = KEY.startsWith('sk_live');
+  console.log('\n  Trader WorkStation store');
+  console.log('  Store:  http://localhost:' + PORT);
+  console.log('  Admin:  http://localhost:' + PORT + '/admin.html');
+  console.log('  Token:  ' + ADMIN);
+  console.log('  Stripe: ' + (live ? 'LIVE - real money' : 'test mode'));
+  console.log('  Email:  ' + (process.env.RESEND_API_KEY ? 'Resend enabled' : 'not set up (emails are saved in the admin Emails tab)'));
+  console.log('  Market ticker: ' + (process.env.TICKER === 'off' ? 'off' : 'crypto live (Binance); US stocks ' + (process.env.FINNHUB_API_KEY ? 'live (Finnhub)' : 'off - add FINNHUB_API_KEY, free at finnhub.io')));
+  console.log('  Assistant: ' + (process.env.ASSISTANT === 'off' ? 'off' : (process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY) ? 'AI answers on' : 'search mode (add ANTHROPIC_API_KEY for AI answers)'));
+  console.log('  Google sign-in: ' + (process.env.GOOGLE_CLIENT_ID ? 'on' : 'off - add GOOGLE_CLIENT_ID (see GOOGLE-LOGIN-SETUP.txt)'));
+  console.log('  Email: ' + (process.env.SMTP_HOST ? 'SMTP (' + process.env.SMTP_HOST + ')' : process.env.RESEND_API_KEY ? 'Resend' : 'not set up - emails are only saved in Admin > Emails'));
+  console.log('  AI voice: ' + (process.env.OPENAI_API_KEY ? 'enabled' : 'not set up (you can still upload audio files)') + '\n');
+}); server.requestTimeout = 0; server.timeout = 0; }
+module.exports = app;
